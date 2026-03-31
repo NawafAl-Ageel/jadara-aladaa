@@ -1,0 +1,17 @@
+<svg version="1.2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 175 124" width="175" height="124">
+  <defs>
+    <clipPath clipPathUnits="userSpaceOnUse" id="cp1">
+      <path d="m-892.51-632.71h1074.89v1322.88h-1074.89z"/>
+    </clipPath>
+  </defs>
+  <style>
+    .s0 { fill: #9090D0; }
+  </style>
+  <g id="Layer 1">
+    <g clip-path="url(#cp1)">
+      <g>
+        <path class="s0" d="m175.28 13.22l-12.87-12.87-38.89 12.87-97.43 97.41 12.87 12.87 38.89-12.87v0.01z"/>
+      </g>
+    </g>
+  </g>
+</svg>
