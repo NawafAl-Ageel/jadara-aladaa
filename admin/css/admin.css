@@ -548,6 +548,77 @@ input, select, textarea { font-family: var(--font); }
 
 .detail-value a:hover { text-decoration: underline; }
 
+.detail-value-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.copy-btn {
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text-muted);
+  border-radius: 6px;
+  width: 30px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  position: relative;
+}
+
+.copy-btn:hover {
+  color: var(--text);
+  border-color: #c8ced6;
+}
+
+.copy-btn svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+}
+
+.copy-btn.is-copied {
+  color: #166534;
+  border-color: #86efac;
+  background: #f0fdf4;
+  animation: copyBlink 0.32s ease-out 1;
+}
+
+.copy-btn::after {
+  content: 'تم النسخ';
+  position: absolute;
+  inset-inline-start: 36px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #166534;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease-out;
+  white-space: nowrap;
+}
+
+.copy-btn.is-copied::after {
+  opacity: 1;
+}
+
+.phone-link {
+  direction: ltr;
+  unicode-bidi: plaintext;
+}
+
+@keyframes copyBlink {
+  0% { background: #fff; border-color: var(--border); }
+  40% { background: #dcfce7; border-color: #86efac; }
+  100% { background: #f0fdf4; border-color: #86efac; }
+}
+
 /* Questionnaire */
 .qa-list {
   display: flex;
@@ -660,10 +731,14 @@ input, select, textarea { font-family: var(--font); }
 
 @media (max-width: 960px) {
   .detail-page { grid-template-columns: 1fr; }
+  .detail-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 768px) {
   .header { padding: 0 16px; }
+  .header__inner { gap: 8px; }
+  .header__user { display: none; }
+  .header__logo { height: 28px; }
   .header__title { display: none; }
   .header__sep { display: none; }
   .main { padding: 16px; }
@@ -671,7 +746,9 @@ input, select, textarea { font-family: var(--font); }
   .toolbar { flex-direction: column; align-items: stretch; }
   .toolbar__end { flex-direction: column; }
   .toolbar__search { width: 100%; }
+  .toolbar__select, .btn-export { width: 100%; }
   .detail-grid { grid-template-columns: 1fr; }
+  .detail-card__body, .sidebar-card { padding: 14px; }
   .stat-card { padding: 12px; }
   .stat-card__number { font-size: 1.1rem; }
 }

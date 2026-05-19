@@ -2,7 +2,6 @@
    JADARA ADMIN DASHBOARD — JavaScript
    ============================================ */
 
-const API = '/api';
 const $ = (sel) => document.querySelector(sel);
 
 const statusLabels = {
@@ -13,9 +12,25 @@ const statusLabels = {
 };
 
 let debounceTimer = null;
+let sbClient;
+
+function getMeta(name) {
+  return (document.querySelector(`meta[name="${name}"]`)?.getAttribute('content') || '').trim();
+}
+
+function initSupabase() {
+  if (sbClient) return sbClient;
+  const url = getMeta('supabase-url');
+  const anonKey = getMeta('supabase-anon-key');
+  if (!url || !anonKey) throw new Error('Supabase configuration missing (supabase-url / supabase-anon-key).');
+  // eslint-disable-next-line no-undef
+  sbClient = window.supabase.createClient(url, anonKey);
+  return sbClient;
+}
 
 /* ---------- Init ---------- */
 document.addEventListener('DOMContentLoaded', () => {
+  initSupabase();
   checkAuth();
   bindEvents();
 });
@@ -38,14 +53,15 @@ function showPage(id) {
 
 async function checkAuth() {
   try {
-    const res = await fetch(`${API}/admin/me`, { credentials: 'include' });
-    if (res.ok) {
-      const data = await res.json();
-      enterDashboard(data.username);
-    } else {
-      showView('loginView');
+    const { data } = await sbClient.auth.getSession();
+    if (data.session?.user) {
+      enterDashboard(data.session.user.email || 'admin');
+      return;
     }
-  } catch {
+    showView('loginView');
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error(e);
     showView('loginView');
   }
 }
@@ -83,25 +99,13 @@ async function handleLogin(e) {
   btn.textContent = 'جارٍ الدخول...';
 
   try {
-    const res = await fetch(`${API}/admin/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({
-        username: $('#loginUser').value.trim(),
-        password: $('#loginPass').value
-      })
-    });
-
-    const data = await res.json();
-
-    if (res.ok) {
-      enterDashboard(data.username);
-    } else {
-      errEl.textContent = data.error || 'خطأ في تسجيل الدخول';
-    }
-  } catch {
-    errEl.textContent = 'تعذر الاتصال بالخادم';
+    const email = $('#loginEmail').value.trim();
+    const password = $('#loginPass').value;
+    const { data, error } = await sbClient.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    enterDashboard(data.user?.email || email);
+  } catch (error) {
+    errEl.textContent = error?.message || 'تعذر تسجيل الدخول';
   }
 
   btn.disabled = false;
@@ -109,7 +113,7 @@ async function handleLogin(e) {
 }
 
 async function handleLogout() {
-  await fetch(`${API}/admin/logout`, { method: 'POST', credentials: 'include' });
+  await sbClient.auth.signOut();
   showView('loginView');
   $('#loginForm').reset();
   $('#loginError').textContent = '';
@@ -119,15 +123,28 @@ async function handleLogout() {
 
 async function loadStats() {
   try {
-    const res = await fetch(`${API}/admin/stats`, { credentials: 'include' });
-    if (!res.ok) return;
-    const d = await res.json();
-    $('#statTotal').textContent = d.total;
-    $('#statNew').textContent = d.new;
-    $('#statReview').textContent = d.in_review;
-    $('#statContacted').textContent = d.contacted;
-    $('#statClosed').textContent = d.closed;
-    $('#statToday').textContent = d.today;
+    const { data, error } = await sbClient
+      .from('leads')
+      .select('id,status,created_at', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .limit(5000);
+    if (error) throw error;
+
+    const total = data.length;
+    const byStatus = { new: 0, in_review: 0, contacted: 0, closed: 0 };
+    for (const l of data) {
+      if (l.status && byStatus[l.status] !== undefined) byStatus[l.status] += 1;
+    }
+    const today = new Date();
+    const todayKey = today.toISOString().slice(0, 10);
+    const todayCount = data.filter(l => (l.created_at || '').slice(0, 10) === todayKey).length;
+
+    $('#statTotal').textContent = total;
+    $('#statNew').textContent = byStatus.new;
+    $('#statReview').textContent = byStatus.in_review;
+    $('#statContacted').textContent = byStatus.contacted;
+    $('#statClosed').textContent = byStatus.closed;
+    $('#statToday').textContent = todayCount;
   } catch { /* silent */ }
 }
 
@@ -136,18 +153,26 @@ async function loadStats() {
 async function loadLeads() {
   const search = $('#searchInput').value.trim();
   const status = $('#statusFilter').value;
-  const params = new URLSearchParams();
-  if (search) params.set('search', search);
-  if (status) params.set('status', status);
 
   try {
-    const res = await fetch(`${API}/admin/leads?${params}`, { credentials: 'include' });
-    if (!res.ok) return;
-    const data = await res.json();
-    renderTable(data.leads);
+    let q = sbClient
+      .from('leads')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(500);
+
+    if (status) q = q.eq('status', status);
+    if (search) {
+      const s = search.replace(/%/g, '\\%').replace(/_/g, '\\_');
+      q = q.or(`name.ilike.%${s}%,company.ilike.%${s}%,email.ilike.%${s}%,phone.ilike.%${s}%`);
+    }
+
+    const { data: leads, error } = await q;
+    if (error) throw error;
+    renderTable(leads || []);
     const empty = $('#emptyState');
     const wrap = $('.table-wrap');
-    if (data.leads.length === 0) {
+    if (!leads || leads.length === 0) {
       empty.style.display = 'block';
       wrap.style.display = 'none';
     } else {
@@ -167,12 +192,13 @@ function renderTable(leads) {
     tr.innerHTML = `
       <td>${lead.id}</td>
       <td><strong>${esc(lead.name)}</strong></td>
+      <td>${esc(lead.job_title || '—')}</td>
       <td>${esc(lead.company || '—')}</td>
+      <td>${esc(lead.service || '—')}</td>
       <td><a href="mailto:${esc(lead.email)}" onclick="event.stopPropagation()">${esc(lead.email)}</a></td>
       <td dir="ltr">${esc(lead.phone)}</td>
       <td><span class="badge badge--${lead.status}">${statusLabels[lead.status] || lead.status}</span></td>
       <td>${formatDate(lead.created_at)}</td>
-      <td><span class="badge ${lead.questionnaire ? 'badge--has-q' : 'badge--no-q'}">${lead.questionnaire ? 'مكتمل' : 'لا يوجد'}</span></td>
     `;
     tbody.appendChild(tr);
   }
@@ -186,9 +212,8 @@ async function openLeadDetail(id) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 
   try {
-    const res = await fetch(`${API}/admin/leads/${id}`, { credentials: 'include' });
-    if (!res.ok) throw new Error();
-    const lead = await res.json();
+    const { data: lead, error } = await sbClient.from('leads').select('*').eq('id', id).single();
+    if (error) throw error;
     renderDetail(lead);
   } catch {
     $('#detailContent').innerHTML = '<p style="text-align:center;color:#dc2626;padding:48px">تعذر تحميل البيانات</p>';
@@ -196,16 +221,6 @@ async function openLeadDetail(id) {
 }
 
 function renderDetail(lead) {
-  let qHTML = '';
-  if (lead.questionnaire && lead.questionnaire.length > 0) {
-    const items = lead.questionnaire.map(q =>
-      `<div class="qa-item"><span class="qa-q">${esc(q.question)}</span><span class="qa-a">${esc(q.answer)}</span></div>`
-    ).join('');
-    qHTML = `<div class="qa-list">${items}</div>`;
-  } else {
-    qHTML = '<p class="qa-empty">لم يتم تعبئة الاستبيان</p>';
-  }
-
   $('#detailContent').innerHTML = `
     <div class="detail-main">
       <!-- Contact Info Card -->
@@ -221,32 +236,46 @@ function renderDetail(lead) {
               <span class="detail-value">${esc(lead.name)}</span>
             </div>
             <div class="detail-item">
+              <span class="detail-label">المسمى الوظيفي</span>
+              <span class="detail-value">${esc(lead.job_title || '—')}</span>
+            </div>
+            <div class="detail-item">
               <span class="detail-label">الشركة</span>
               <span class="detail-value">${esc(lead.company || '—')}</span>
             </div>
             <div class="detail-item">
+              <span class="detail-label">الخدمة المطلوبة</span>
+              <span class="detail-value">${esc(lead.service || '—')}</span>
+            </div>
+            <div class="detail-item">
               <span class="detail-label">البريد الإلكتروني</span>
-              <span class="detail-value"><a href="mailto:${esc(lead.email)}">${esc(lead.email)}</a></span>
+              <span class="detail-value detail-value-row">
+                <a href="mailto:${esc(lead.email)}">${esc(lead.email)}</a>
+                <button type="button" class="copy-btn" data-copy="${esc(lead.email)}" data-label="البريد الإلكتروني" aria-label="نسخ البريد الإلكتروني" title="نسخ">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <rect x="9" y="9" width="11" height="11" rx="2"></rect>
+                    <path d="M5 15V6a2 2 0 0 1 2-2h9"></path>
+                  </svg>
+                </button>
+              </span>
             </div>
             <div class="detail-item">
               <span class="detail-label">الهاتف</span>
-              <span class="detail-value" dir="ltr"><a href="tel:${esc(lead.phone)}">${esc(lead.phone)}</a></span>
+              <span class="detail-value detail-value-row">
+                <a href="tel:${esc(lead.phone)}" class="phone-link" dir="ltr">${esc(lead.phone)}</a>
+                <button type="button" class="copy-btn" data-copy="${esc(lead.phone)}" data-label="الهاتف" aria-label="نسخ رقم الهاتف" title="نسخ">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <rect x="9" y="9" width="11" height="11" rx="2"></rect>
+                    <path d="M5 15V6a2 2 0 0 1 2-2h9"></path>
+                  </svg>
+                </button>
+              </span>
             </div>
             <div class="detail-item detail-item--full">
               <span class="detail-label">الرسالة</span>
               <span class="detail-value">${esc(lead.message)}</span>
             </div>
           </div>
-        </div>
-      </div>
-
-      <!-- Questionnaire Card -->
-      <div class="detail-card">
-        <div class="detail-card__header">
-          <h3>الاستبيان</h3>
-        </div>
-        <div class="detail-card__body">
-          ${qHTML}
         </div>
       </div>
     </div>
@@ -295,6 +324,18 @@ function renderDetail(lead) {
 
   $('#saveBtn').addEventListener('click', () => saveLead(lead.id));
   $('#deleteBtn').addEventListener('click', () => deleteLead(lead.id));
+  document.querySelectorAll('.copy-btn[data-copy]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const text = btn.getAttribute('data-copy') || '';
+      const label = btn.getAttribute('data-label') || 'القيمة';
+      const ok = await copyToClipboard(text);
+      btn.classList.toggle('is-copied', ok);
+      setTimeout(() => { btn.classList.remove('is-copied'); }, 420);
+      if (!ok) alert(`تعذر نسخ ${label}`);
+    });
+  });
 }
 
 async function saveLead(id) {
@@ -303,27 +344,22 @@ async function saveLead(id) {
   btn.textContent = 'جارٍ الحفظ...';
 
   try {
-    const res = await fetch(`${API}/admin/leads/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({
+    const { data: updated, error } = await sbClient
+      .from('leads')
+      .update({
         status: $('#detailStatus').value,
-        notes: $('#detailNotes').value
+        notes: $('#detailNotes').value,
+        updated_at: new Date().toISOString()
       })
-    });
-
-    if (res.ok) {
-      const updated = await res.json();
-      loadStats();
-      loadLeads();
-      renderDetail(updated);
-    } else {
-      const data = await res.json();
-      alert(data.error || 'حدث خطأ');
-    }
+      .eq('id', id)
+      .select('*')
+      .single();
+    if (error) throw error;
+    await loadStats();
+    await loadLeads();
+    renderDetail(updated);
   } catch {
-    alert('تعذر الاتصال بالخادم');
+    alert('حدث خطأ أثناء الحفظ');
   }
 
   btn.disabled = false;
@@ -334,16 +370,11 @@ async function deleteLead(id) {
   if (!confirm('هل أنت متأكد من حذف هذا الطلب؟')) return;
 
   try {
-    const res = await fetch(`${API}/admin/leads/${id}`, {
-      method: 'DELETE',
-      credentials: 'include'
-    });
-
-    if (res.ok) {
-      loadStats();
-      loadLeads();
-      showPage('listPage');
-    }
+    const { error } = await sbClient.from('leads').delete().eq('id', id);
+    if (error) throw error;
+    await loadStats();
+    await loadLeads();
+    showPage('listPage');
   } catch {
     alert('تعذر الحذف');
   }
@@ -351,10 +382,49 @@ async function deleteLead(id) {
 
 /* ---------- Export ---------- */
 
-function handleExport() {
-  const status = $('#statusFilter').value;
-  const params = status ? `?status=${status}` : '';
-  window.open(`${API}/admin/leads/export${params}`, '_blank');
+async function handleExport() {
+  try {
+    const status = $('#statusFilter').value;
+    let q = sbClient
+      .from('leads')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(5000);
+    if (status) q = q.eq('status', status);
+    const { data, error } = await q;
+    if (error) throw error;
+
+    let csv = '\uFEFF';
+    csv += 'ID,الاسم,المسمى الوظيفي,الشركة,الخدمة المطلوبة,البريد الإلكتروني,الهاتف,الرسالة,الحالة,ملاحظات,تاريخ الإنشاء\n';
+    for (const l of (data || [])) {
+      const escCsv = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      csv += [
+        l.id,
+        escCsv(l.name),
+        escCsv(l.job_title),
+        escCsv(l.company),
+        escCsv(l.service),
+        escCsv(l.email),
+        escCsv(l.phone),
+        escCsv(l.message),
+        l.status,
+        escCsv(l.notes),
+        l.created_at
+      ].join(',') + '\n';
+    }
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'jadara-leads.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch {
+    alert('تعذر التصدير');
+  }
 }
 
 /* ---------- Helpers ---------- */
@@ -370,4 +440,25 @@ function formatDate(iso) {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return iso;
   return d.toLocaleDateString('ar-SA', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+async function copyToClipboard(text) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand('copy');
+    ta.remove();
+    return ok;
+  } catch {
+    return false;
+  }
 }

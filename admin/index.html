@@ -4,7 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>لوحة الإدارة | جدارة الأداء</title>
-  <link rel="icon" type="image/svg+xml" href="/favicon-light.svg">
+  <meta name="supabase-url" content="https://gjuzaafqfsvmxhumpokp.supabase.co">
+  <meta name="supabase-anon-key" content="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdqdXphYWZxZnN2bXhodW1wb2twIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwMzI4MDcsImV4cCI6MjA5MDYwODgwN30.ihEtU1ShSl5i6vnRwWi7tR9MHlLhuY7dWb_ZuXgDX1I">
+  <link rel="icon" type="image/svg+xml" href="favicon-light.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -15,13 +17,13 @@
   <!-- ========== LOGIN ========== -->
   <div id="loginView" class="view view--login">
     <div class="login__card">
-      <img src="/assets/jadara-logo-light.svg" alt="جدارة" class="login__logo">
+      <img src="assets/jadara-logo.png" alt="جدارة" class="login__logo">
       <h1 class="login__title">لوحة الإدارة</h1>
       <p class="login__subtitle">سجّل دخولك لإدارة طلبات العملاء</p>
       <form id="loginForm" class="login__form" autocomplete="off">
         <div class="field">
-          <label for="loginUser">اسم المستخدم</label>
-          <input type="text" id="loginUser" name="username" required autocomplete="username">
+          <label for="loginEmail">البريد الإلكتروني</label>
+          <input type="email" id="loginEmail" name="email" required autocomplete="username" dir="ltr">
         </div>
         <div class="field">
           <label for="loginPass">كلمة المرور</label>
@@ -40,7 +42,7 @@
     <header class="header">
       <div class="header__inner">
         <div class="header__start">
-          <img src="/assets/jadara-logo-light.svg" alt="جدارة" class="header__logo">
+          <img src="assets/jadara-logo.png" alt="جدارة" class="header__logo">
           <span class="header__sep"></span>
           <span class="header__title">لوحة الإدارة</span>
         </div>
@@ -139,12 +141,13 @@
                 <tr>
                   <th>#</th>
                   <th>الاسم</th>
+                  <th>المسمى الوظيفي</th>
                   <th>الشركة</th>
+                  <th>الخدمة المطلوبة</th>
                   <th>البريد الإلكتروني</th>
                   <th>الهاتف</th>
                   <th>الحالة</th>
                   <th>التاريخ</th>
-                  <th>الاستبيان</th>
                 </tr>
               </thead>
               <tbody id="leadsBody"></tbody>
@@ -166,6 +169,7 @@
     </main>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/admin.js"></script>
 </body>
 </html>

@@ -27,15 +27,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 2000);
   }
 
-  /* ---------- Services Accordion ---------- */
-  document.querySelectorAll('.services__list li').forEach(li => {
-    li.addEventListener('click', (e) => {
-      if (e.target.closest('.services__item-btn')) return;
-      const wasOpen = li.classList.contains('is-open');
-      li.closest('.services__list').querySelectorAll('li.is-open').forEach(open => {
-        open.classList.remove('is-open');
+  /* ---------- Services Accordion (card grid) ---------- */
+  document.querySelectorAll('.services__cards-grid').forEach(grid => {
+    grid.querySelectorAll('.services__card').forEach(card => {
+      const trigger = card.querySelector('.services__card-trigger');
+      if (!trigger) return;
+      trigger.addEventListener('click', (e) => {
+        if (e.target.closest('.services__item-btn')) return;
+        const wasOpen = card.classList.contains('is-open');
+        grid.querySelectorAll('.services__card.is-open').forEach(c => {
+          c.classList.remove('is-open');
+          c.querySelector('.services__card-trigger')?.setAttribute('aria-expanded', 'false');
+        });
+        if (!wasOpen) {
+          card.classList.add('is-open');
+          trigger.setAttribute('aria-expanded', 'true');
+        }
       });
-      if (!wasOpen) li.classList.add('is-open');
     });
   });
 
@@ -43,7 +51,8 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.services__item-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
-      const serviceName = btn.closest('li').dataset.service;
+      const card = btn.closest('.services__card');
+      const serviceName = card?.dataset.service;
       const select = document.getElementById('service_select');
       if (select && serviceName) {
         select.value = serviceName;
@@ -223,24 +232,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (statsSection) statsObserver.observe(statsSection);
 
-  /* ---------- Swiper Testimonials ---------- */
-  new Swiper('.testimonials__swiper', {
-    loop: true,
-    autoplay: {
-      delay: 5000,
-      disableOnInteraction: false,
-    },
-    pagination: {
-      el: '.swiper-pagination',
-      clickable: true,
-    },
-    effect: 'fade',
-    fadeEffect: { crossFade: true },
-    speed: 600,
-  });
-
   /* ---------- Multi-Step Contact Form ---------- */
-  const API_BASE = window.location.origin + '/api';
+  function getMeta(name) {
+    return (document.querySelector(`meta[name="${name}"]`)?.getAttribute('content') || '').trim();
+  }
+  function getSupabase() {
+    const url = getMeta('supabase-url');
+    const anonKey = getMeta('supabase-anon-key');
+    // eslint-disable-next-line no-undef
+    if (!url || !anonKey || !window.supabase) return null;
+    // eslint-disable-next-line no-undef
+    return window.supabase.createClient(url, anonKey);
+  }
+  const supabase = getSupabase();
 
   const form = document.getElementById('contactForm');
   const step1 = document.getElementById('formStep1');
@@ -287,19 +291,11 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     try {
-      const res = await fetch(`${API_BASE}/leads`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      if (res.ok) {
-        form.hidden = true;
-        successEl.classList.add('visible');
-      } else {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'حدث خطأ');
-      }
+      if (!supabase) throw new Error('الإرسال غير متاح حالياً');
+      const { error } = await supabase.from('leads').insert([payload]);
+      if (error) throw error;
+      form.hidden = true;
+      successEl.classList.add('visible');
     } catch (error) {
       console.error('Form submission error:', error);
       btnText.textContent = error.message || 'حدث خطأ، حاول مجدداً';
@@ -333,5 +329,57 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   sections.forEach(section => activeLinkObserver.observe(section));
+
+  /* ---------- Methodology banners: mobile arrows (no horizontal scroll) ---------- */
+  (function initMethodBannerCarousels() {
+    const mq = window.matchMedia('(max-width: 991px)');
+
+    document.querySelectorAll('.method-banner__shell').forEach((shell) => {
+      const steps = shell.querySelectorAll('.method-banner__step');
+      const prevBtn = shell.querySelector('.method-banner__arrow--prev');
+      const nextBtn = shell.querySelector('.method-banner__arrow--next');
+      if (!steps.length || !prevBtn || !nextBtn) return;
+
+      let index = 0;
+
+      function applyMobile() {
+        index = Math.max(0, Math.min(steps.length - 1, index));
+        steps.forEach((el, j) => el.classList.toggle('is-active', j === index));
+        prevBtn.disabled = index === 0;
+        nextBtn.disabled = index === steps.length - 1;
+      }
+
+      function applyDesktop() {
+        steps.forEach((el) => el.classList.remove('is-active'));
+      }
+
+      function sync() {
+        if (mq.matches) {
+          applyMobile();
+        } else {
+          applyDesktop();
+        }
+      }
+
+      prevBtn.addEventListener('click', () => {
+        if (!mq.matches) return;
+        index -= 1;
+        applyMobile();
+      });
+
+      nextBtn.addEventListener('click', () => {
+        if (!mq.matches) return;
+        index += 1;
+        applyMobile();
+      });
+
+      mq.addEventListener('change', () => {
+        if (mq.matches) index = 0;
+        sync();
+      });
+
+      sync();
+    });
+  })();
 
 });
