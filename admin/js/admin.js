@@ -3,6 +3,7 @@
    ============================================ */
 
 const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
 const statusLabels = {
   new: 'جديد',
@@ -13,6 +14,8 @@ const statusLabels = {
 
 let debounceTimer = null;
 let sbClient;
+let allLeadsCache = [];
+let charts = {};
 
 function getMeta(name) {
   return (document.querySelector(`meta[name="${name}"]`)?.getAttribute('content') || '').trim();
@@ -43,10 +46,28 @@ function showView(id) {
   if (el) el.classList.add('view--active');
 }
 
+const pageTitles = {
+  dashboardPage: 'لوحة المعلومات',
+  listPage: 'الطلبات الواردة',
+  detailPage: 'تفاصيل الطلب',
+  contentPage: 'محتوى الموقع',
+  settingsPage: 'الإعدادات'
+};
+
 function showPage(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('page--active'));
   const el = document.getElementById(id);
   if (el) el.classList.add('page--active');
+
+  $$('.sidebar__link').forEach(l => l.classList.toggle('is-active', l.dataset.tab === id));
+  const title = $('#topbarTitle');
+  if (title && pageTitles[id]) title.textContent = pageTitles[id];
+
+  document.body.classList.remove('sidebar-open');
+
+  if (id === 'dashboardPage') loadDashboard();
+  if (id === 'listPage') loadLeads();
+  if (id === 'contentPage') loadContent();
 }
 
 /* ---------- Auth ---------- */
@@ -68,10 +89,8 @@ async function checkAuth() {
 
 function enterDashboard(username) {
   showView('adminView');
-  showPage('listPage');
+  showPage('dashboardPage');
   $('#adminUsername').textContent = username;
-  loadStats();
-  loadLeads();
 }
 
 /* ---------- Event Binding ---------- */
@@ -86,6 +105,28 @@ function bindEvents() {
   $('#statusFilter').addEventListener('change', () => loadLeads());
   $('#exportBtn').addEventListener('click', handleExport);
   $('#backBtn').addEventListener('click', () => showPage('listPage'));
+
+  $$('.sidebar__link').forEach(link => {
+    link.addEventListener('click', () => showPage(link.dataset.tab));
+  });
+
+  $('#menuToggle')?.addEventListener('click', () => {
+    document.body.classList.toggle('sidebar-open');
+  });
+
+  $$('.content-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      $$('.content-tab').forEach(t => t.classList.remove('is-active'));
+      tab.classList.add('is-active');
+      $$('.content-panel').forEach(p => p.classList.remove('content-panel--active'));
+      $(`#${tab.dataset.contentTab}`).classList.add('content-panel--active');
+    });
+  });
+
+  $('#addLogoBtn')?.addEventListener('click', () => openLogoModal());
+  $('#modalOverlay')?.addEventListener('click', (e) => {
+    if (e.target === $('#modalOverlay')) closeModal();
+  });
 }
 
 /* ---------- Login / Logout ---------- */
@@ -119,33 +160,107 @@ async function handleLogout() {
   $('#loginError').textContent = '';
 }
 
-/* ---------- Stats ---------- */
+/* ---------- Dashboard ---------- */
 
-async function loadStats() {
+async function loadDashboard() {
   try {
     const { data, error } = await sbClient
       .from('leads')
-      .select('id,status,created_at', { count: 'exact' })
+      .select('id,status,service,created_at')
       .order('created_at', { ascending: false })
       .limit(5000);
     if (error) throw error;
+    allLeadsCache = data || [];
+    renderStats(allLeadsCache);
+    renderCharts(allLeadsCache);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error(e);
+  }
+}
 
-    const total = data.length;
-    const byStatus = { new: 0, in_review: 0, contacted: 0, closed: 0 };
-    for (const l of data) {
-      if (l.status && byStatus[l.status] !== undefined) byStatus[l.status] += 1;
-    }
-    const today = new Date();
-    const todayKey = today.toISOString().slice(0, 10);
-    const todayCount = data.filter(l => (l.created_at || '').slice(0, 10) === todayKey).length;
+function renderStats(data) {
+  const total = data.length;
+  const byStatus = { new: 0, in_review: 0, contacted: 0, closed: 0 };
+  for (const l of data) {
+    if (l.status && byStatus[l.status] !== undefined) byStatus[l.status] += 1;
+  }
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const todayCount = data.filter(l => (l.created_at || '').slice(0, 10) === todayKey).length;
 
-    $('#statTotal').textContent = total;
-    $('#statNew').textContent = byStatus.new;
-    $('#statReview').textContent = byStatus.in_review;
-    $('#statContacted').textContent = byStatus.contacted;
-    $('#statClosed').textContent = byStatus.closed;
-    $('#statToday').textContent = todayCount;
-  } catch { /* silent */ }
+  $('#statTotal').textContent = total;
+  $('#statNew').textContent = byStatus.new;
+  $('#statReview').textContent = byStatus.in_review;
+  $('#statContacted').textContent = byStatus.contacted;
+  $('#statClosed').textContent = byStatus.closed;
+  $('#statToday').textContent = todayCount;
+}
+
+function renderCharts(data) {
+  if (typeof Chart === 'undefined') return;
+
+  // Trend: last 30 days
+  const days = [];
+  const counts = [];
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    days.push(d.toLocaleDateString('ar-SA', { day: 'numeric', month: 'short' }));
+    counts.push(data.filter(l => (l.created_at || '').slice(0, 10) === key).length);
+  }
+  drawChart('trendChart', 'line', {
+    labels: days,
+    datasets: [{
+      label: 'الطلبات',
+      data: counts,
+      borderColor: '#1a5276',
+      backgroundColor: 'rgba(26,82,118,0.08)',
+      fill: true,
+      tension: 0.35,
+      pointRadius: 0
+    }]
+  }, { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } });
+
+  // Status funnel
+  const byStatus = { new: 0, in_review: 0, contacted: 0, closed: 0 };
+  for (const l of data) {
+    if (l.status && byStatus[l.status] !== undefined) byStatus[l.status] += 1;
+  }
+  drawChart('statusChart', 'doughnut', {
+    labels: Object.keys(byStatus).map(k => statusLabels[k]),
+    datasets: [{
+      data: Object.values(byStatus),
+      backgroundColor: ['#166534', '#92400e', '#374151', '#991b1b']
+    }]
+  }, { plugins: { legend: { position: 'bottom' } } });
+
+  // Top requested services
+  const bySvc = {};
+  for (const l of data) {
+    const key = l.service || 'غير محدد';
+    bySvc[key] = (bySvc[key] || 0) + 1;
+  }
+  const top = Object.entries(bySvc).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  drawChart('serviceChart', 'bar', {
+    labels: top.map(([k]) => k),
+    datasets: [{
+      label: 'عدد الطلبات',
+      data: top.map(([, v]) => v),
+      backgroundColor: '#1a5276'
+    }]
+  }, {
+    indexAxis: 'y',
+    plugins: { legend: { display: false } },
+    scales: { x: { beginAtZero: true, ticks: { precision: 0 } } }
+  });
+}
+
+function drawChart(canvasId, type, data, options) {
+  const el = document.getElementById(canvasId);
+  if (!el) return;
+  if (charts[canvasId]) charts[canvasId].destroy();
+  charts[canvasId] = new Chart(el, { type, data, options: { responsive: true, maintainAspectRatio: false, ...options } });
 }
 
 /* ---------- Leads Table ---------- */
@@ -197,6 +312,7 @@ function renderTable(leads) {
       <td>${esc(lead.service || '—')}</td>
       <td><a href="mailto:${esc(lead.email)}" onclick="event.stopPropagation()">${esc(lead.email)}</a></td>
       <td dir="ltr">${esc(lead.phone)}</td>
+      <td>${esc(lead.assigned_to || '—')}</td>
       <td><span class="badge badge--${lead.status}">${statusLabels[lead.status] || lead.status}</span></td>
       <td>${formatDate(lead.created_at)}</td>
     `;
@@ -218,6 +334,21 @@ async function openLeadDetail(id) {
   } catch {
     $('#detailContent').innerHTML = '<p style="text-align:center;color:#dc2626;padding:48px">تعذر تحميل البيانات</p>';
   }
+}
+
+function renderActivity(activity) {
+  if (!Array.isArray(activity) || activity.length === 0) {
+    return '<p class="qa-empty">لا يوجد سجل تغييرات بعد</p>';
+  }
+  return activity.slice().reverse().map(a => `
+    <div class="activity-item">
+      <span class="activity-item__dot"></span>
+      <div>
+        <p class="activity-item__text">${esc(a.text)}</p>
+        <span class="activity-item__date">${formatDate(a.at)}</span>
+      </div>
+    </div>
+  `).join('');
 }
 
 function renderDetail(lead) {
@@ -278,6 +409,13 @@ function renderDetail(lead) {
           </div>
         </div>
       </div>
+
+      <div class="detail-card">
+        <div class="detail-card__header"><h3>سجل النشاط</h3></div>
+        <div class="detail-card__body">
+          <div class="activity-list">${renderActivity(lead.activity)}</div>
+        </div>
+      </div>
     </div>
 
     <!-- Sidebar -->
@@ -310,6 +448,10 @@ function renderDetail(lead) {
           </select>
         </div>
         <div class="field">
+          <label>المسؤول عن المتابعة</label>
+          <input type="text" id="detailAssignee" placeholder="اسم أو بريد الموظف" value="${esc(lead.assigned_to || '')}">
+        </div>
+        <div class="field">
           <label>ملاحظات</label>
           <textarea id="detailNotes" placeholder="أضف ملاحظاتك هنا..." rows="4">${esc(lead.notes || '')}</textarea>
         </div>
@@ -322,7 +464,7 @@ function renderDetail(lead) {
     </div>
   `;
 
-  $('#saveBtn').addEventListener('click', () => saveLead(lead.id));
+  $('#saveBtn').addEventListener('click', () => saveLead(lead));
   $('#deleteBtn').addEventListener('click', () => deleteLead(lead.id));
   document.querySelectorAll('.copy-btn[data-copy]').forEach(btn => {
     btn.addEventListener('click', async (e) => {
@@ -338,25 +480,41 @@ function renderDetail(lead) {
   });
 }
 
-async function saveLead(id) {
+async function saveLead(prevLead) {
   const btn = $('#saveBtn');
   btn.disabled = true;
   btn.textContent = 'جارٍ الحفظ...';
+
+  const newStatus = $('#detailStatus').value;
+  const newAssignee = $('#detailAssignee').value.trim();
+  const newNotes = $('#detailNotes').value;
+
+  const activity = Array.isArray(prevLead.activity) ? prevLead.activity.slice() : [];
+  const now = new Date().toISOString();
+  if (newStatus !== prevLead.status) {
+    activity.push({ at: now, text: `تغيير الحالة إلى «${statusLabels[newStatus] || newStatus}»` });
+  }
+  if (newAssignee !== (prevLead.assigned_to || '')) {
+    activity.push({ at: now, text: newAssignee ? `تم إسناد الطلب إلى ${newAssignee}` : 'تمت إزالة المسؤول عن المتابعة' });
+  }
+  if (newNotes !== (prevLead.notes || '')) {
+    activity.push({ at: now, text: 'تم تحديث الملاحظات' });
+  }
 
   try {
     const { data: updated, error } = await sbClient
       .from('leads')
       .update({
-        status: $('#detailStatus').value,
-        notes: $('#detailNotes').value,
-        updated_at: new Date().toISOString()
+        status: newStatus,
+        assigned_to: newAssignee || null,
+        notes: newNotes,
+        activity,
+        updated_at: now
       })
-      .eq('id', id)
+      .eq('id', prevLead.id)
       .select('*')
       .single();
     if (error) throw error;
-    await loadStats();
-    await loadLeads();
     renderDetail(updated);
   } catch {
     alert('حدث خطأ أثناء الحفظ');
@@ -372,9 +530,8 @@ async function deleteLead(id) {
   try {
     const { error } = await sbClient.from('leads').delete().eq('id', id);
     if (error) throw error;
-    await loadStats();
-    await loadLeads();
     showPage('listPage');
+    await loadLeads();
   } catch {
     alert('تعذر الحذف');
   }
@@ -395,7 +552,7 @@ async function handleExport() {
     if (error) throw error;
 
     let csv = '\uFEFF';
-    csv += 'ID,الاسم,المسمى الوظيفي,الشركة,الخدمة المطلوبة,البريد الإلكتروني,الهاتف,الرسالة,الحالة,ملاحظات,تاريخ الإنشاء\n';
+    csv += 'ID,الاسم,المسمى الوظيفي,الشركة,الخدمة المطلوبة,البريد الإلكتروني,الهاتف,الرسالة,المسؤول,الحالة,ملاحظات,تاريخ الإنشاء\n';
     for (const l of (data || [])) {
       const escCsv = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
       csv += [
@@ -407,6 +564,7 @@ async function handleExport() {
         escCsv(l.email),
         escCsv(l.phone),
         escCsv(l.message),
+        escCsv(l.assigned_to),
         l.status,
         escCsv(l.notes),
         l.created_at
@@ -427,11 +585,169 @@ async function handleExport() {
   }
 }
 
+/* ---------- Content (CMS) ---------- */
+
+async function loadContent() {
+  loadStatsContent();
+  loadServicesContent();
+  loadLogosContent();
+}
+
+async function loadStatsContent() {
+  const tbody = $('#statsBody');
+  tbody.innerHTML = '<tr><td colspan="3">جارٍ التحميل...</td></tr>';
+  try {
+    const { data, error } = await sbClient.from('site_stats').select('*').order('sort_order');
+    if (error) throw error;
+    tbody.innerHTML = '';
+    for (const row of (data || [])) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${esc(row.label)}</td>
+        <td><input type="number" class="inline-input" value="${row.value}" data-key="${esc(row.key)}"></td>
+        <td><button class="btn-save btn-save--sm" data-save-stat="${esc(row.key)}">حفظ</button></td>
+      `;
+      tbody.appendChild(tr);
+    }
+    tbody.querySelectorAll('[data-save-stat]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const key = btn.getAttribute('data-save-stat');
+        const input = tbody.querySelector(`input[data-key="${key}"]`);
+        btn.disabled = true;
+        btn.textContent = '...';
+        try {
+          const { error } = await sbClient.from('site_stats').update({ value: Number(input.value) }).eq('key', key);
+          if (error) throw error;
+          btn.textContent = 'تم الحفظ';
+        } catch {
+          btn.textContent = 'خطأ';
+        }
+        setTimeout(() => { btn.disabled = false; btn.textContent = 'حفظ'; }, 1200);
+      });
+    });
+  } catch {
+    tbody.innerHTML = '<tr><td colspan="3">تعذر التحميل</td></tr>';
+  }
+}
+
+async function loadServicesContent() {
+  const tbody = $('#servicesBody');
+  tbody.innerHTML = '<tr><td colspan="3">جارٍ التحميل...</td></tr>';
+  try {
+    const { data, error } = await sbClient.from('services').select('*').order('sort_order');
+    if (error) throw error;
+    tbody.innerHTML = '';
+    for (const row of (data || [])) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="services-cell-name">${esc(row.service_key)}</td>
+        <td><textarea class="inline-textarea" rows="2" data-key="${esc(row.service_key)}">${esc(row.description)}</textarea></td>
+        <td><button class="btn-save btn-save--sm" data-save-service="${esc(row.service_key)}">حفظ</button></td>
+      `;
+      tbody.appendChild(tr);
+    }
+    tbody.querySelectorAll('[data-save-service]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const key = btn.getAttribute('data-save-service');
+        const textarea = tbody.querySelector(`textarea[data-key="${CSS.escape(key)}"]`);
+        btn.disabled = true;
+        btn.textContent = '...';
+        try {
+          const { error } = await sbClient.from('services').update({ description: textarea.value }).eq('service_key', key);
+          if (error) throw error;
+          btn.textContent = 'تم الحفظ';
+        } catch {
+          btn.textContent = 'خطأ';
+        }
+        setTimeout(() => { btn.disabled = false; btn.textContent = 'حفظ'; }, 1200);
+      });
+    });
+  } catch {
+    tbody.innerHTML = '<tr><td colspan="3">تعذر التحميل</td></tr>';
+  }
+}
+
+async function loadLogosContent() {
+  const grid = $('#logosGrid');
+  grid.innerHTML = '<p class="qa-empty">جارٍ التحميل...</p>';
+  try {
+    const { data, error } = await sbClient.from('client_logos').select('*').order('sort_order');
+    if (error) throw error;
+    grid.innerHTML = '';
+    for (const logo of (data || [])) {
+      const card = document.createElement('div');
+      card.className = 'logo-card';
+      card.innerHTML = `
+        <img src="../${esc(logo.image_url)}" alt="${esc(logo.name)}" loading="lazy" onerror="this.style.opacity=0.25">
+        <span class="logo-card__name">${esc(logo.name)}</span>
+        <button class="logo-card__del" data-del-logo="${logo.id}" aria-label="حذف">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg>
+        </button>
+      `;
+      grid.appendChild(card);
+    }
+    grid.querySelectorAll('[data-del-logo]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!confirm('حذف هذا الشعار؟')) return;
+        const id = btn.getAttribute('data-del-logo');
+        try {
+          const { error } = await sbClient.from('client_logos').delete().eq('id', id);
+          if (error) throw error;
+          loadLogosContent();
+        } catch {
+          alert('تعذر الحذف');
+        }
+      });
+    });
+  } catch {
+    grid.innerHTML = '<p class="qa-empty">تعذر التحميل</p>';
+  }
+}
+
+function openLogoModal() {
+  const box = $('#modalBox');
+  box.innerHTML = `
+    <h3>إضافة شعار عميل</h3>
+    <div class="field">
+      <label>اسم العميل</label>
+      <input type="text" id="modalLogoName" placeholder="اسم الجهة">
+    </div>
+    <div class="field">
+      <label>رابط الشعار</label>
+      <input type="text" id="modalLogoUrl" placeholder="Clients_logos/example.png أو رابط كامل" dir="ltr">
+    </div>
+    <div class="modal__actions">
+      <button class="btn-back" id="modalCancel">إلغاء</button>
+      <button class="btn-save" id="modalSave">إضافة</button>
+    </div>
+  `;
+  $('#modalCancel').addEventListener('click', closeModal);
+  $('#modalSave').addEventListener('click', async () => {
+    const name = $('#modalLogoName').value.trim();
+    const url = $('#modalLogoUrl').value.trim();
+    if (!name || !url) return;
+    try {
+      const { error } = await sbClient.from('client_logos').insert([{ name, image_url: url, sort_order: 999 }]);
+      if (error) throw error;
+      closeModal();
+      loadLogosContent();
+    } catch {
+      alert('تعذر الإضافة');
+    }
+  });
+  $('#modalOverlay').classList.add('is-visible');
+}
+
+function closeModal() {
+  $('#modalOverlay').classList.remove('is-visible');
+  $('#modalBox').innerHTML = '';
+}
+
 /* ---------- Helpers ---------- */
 
 function esc(str) {
   const d = document.createElement('div');
-  d.textContent = str;
+  d.textContent = str ?? '';
   return d.innerHTML;
 }
 

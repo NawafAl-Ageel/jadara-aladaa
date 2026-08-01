@@ -38,138 +38,228 @@
   <!-- ========== DASHBOARD ========== -->
   <div id="adminView" class="view view--admin">
 
-    <!-- Header -->
-    <header class="header">
-      <div class="header__inner">
-        <div class="header__start">
-          <img src="assets/jadara-logo.png" alt="جدارة" class="header__logo">
-          <span class="header__sep"></span>
-          <span class="header__title">لوحة الإدارة</span>
-        </div>
-        <div class="header__end">
-          <span class="header__user" id="adminUsername"></span>
-          <button class="btn-logout" id="logoutBtn">تسجيل الخروج</button>
-        </div>
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar__brand">
+        <img src="assets/jadara-logo.png" alt="جدارة" class="sidebar__logo">
       </div>
-    </header>
-
-    <main class="main">
-
-      <!-- Stats (always visible) -->
-      <section class="stats-row">
-        <div class="stat-card stat-card--total">
-          <div class="stat-card__icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
-          </div>
-          <div class="stat-card__body">
-            <span class="stat-card__number" id="statTotal">0</span>
-            <span class="stat-card__label">إجمالي الطلبات</span>
-          </div>
-        </div>
-        <div class="stat-card stat-card--new">
-          <div class="stat-card__icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
-          </div>
-          <div class="stat-card__body">
-            <span class="stat-card__number" id="statNew">0</span>
-            <span class="stat-card__label">جديد</span>
-          </div>
-        </div>
-        <div class="stat-card stat-card--review">
-          <div class="stat-card__icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-          </div>
-          <div class="stat-card__body">
-            <span class="stat-card__number" id="statReview">0</span>
-            <span class="stat-card__label">قيد المراجعة</span>
-          </div>
-        </div>
-        <div class="stat-card stat-card--contacted">
-          <div class="stat-card__icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2A19.86 19.86 0 0 1 3.09 5.18 2 2 0 0 1 5.11 3h3a2 2 0 0 1 2 1.72c.13.81.36 1.6.68 2.34a2 2 0 0 1-.45 2.11L8.91 10.6a16 16 0 0 0 6.49 6.49l1.43-1.43a2 2 0 0 1 2.11-.45c.74.32 1.53.55 2.34.68a2 2 0 0 1 1.72 2.03z"/></svg>
-          </div>
-          <div class="stat-card__body">
-            <span class="stat-card__number" id="statContacted">0</span>
-            <span class="stat-card__label">تم التواصل</span>
-          </div>
-        </div>
-        <div class="stat-card stat-card--closed">
-          <div class="stat-card__icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-          </div>
-          <div class="stat-card__body">
-            <span class="stat-card__number" id="statClosed">0</span>
-            <span class="stat-card__label">مغلق</span>
-          </div>
-        </div>
-        <div class="stat-card stat-card--today">
-          <div class="stat-card__icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-          </div>
-          <div class="stat-card__body">
-            <span class="stat-card__number" id="statToday">0</span>
-            <span class="stat-card__label">اليوم</span>
-          </div>
-        </div>
-      </section>
-
-      <!-- ===== LIST PAGE ===== -->
-      <section id="listPage" class="page page--active">
-        <div class="toolbar">
-          <div class="toolbar__start">
-            <h2 class="toolbar__title">الطلبات الواردة</h2>
-          </div>
-          <div class="toolbar__end">
-            <input type="search" id="searchInput" class="toolbar__search" placeholder="بحث بالاسم أو البريد أو الهاتف...">
-            <select id="statusFilter" class="toolbar__select">
-              <option value="">جميع الحالات</option>
-              <option value="new">جديد</option>
-              <option value="in_review">قيد المراجعة</option>
-              <option value="contacted">تم التواصل</option>
-              <option value="closed">مغلق</option>
-            </select>
-            <button id="exportBtn" class="btn-export">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="18" height="18"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              تصدير CSV
-            </button>
-          </div>
-        </div>
-        <div class="table-section">
-          <div class="table-wrap">
-            <table class="table" id="leadsTable">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>الاسم</th>
-                  <th>المسمى الوظيفي</th>
-                  <th>الشركة</th>
-                  <th>الخدمة المطلوبة</th>
-                  <th>البريد الإلكتروني</th>
-                  <th>الهاتف</th>
-                  <th>الحالة</th>
-                  <th>التاريخ</th>
-                </tr>
-              </thead>
-              <tbody id="leadsBody"></tbody>
-            </table>
-          </div>
-          <p id="emptyState" class="empty-state">لا توجد طلبات بعد</p>
-        </div>
-      </section>
-
-      <!-- ===== DETAIL PAGE ===== -->
-      <section id="detailPage" class="page">
-        <button class="btn-back" id="backBtn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-          رجوع للقائمة
+      <nav class="sidebar__nav">
+        <button class="sidebar__link is-active" data-tab="dashboardPage">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+          <span>لوحة المعلومات</span>
         </button>
-        <div class="detail-page" id="detailContent"></div>
-      </section>
+        <button class="sidebar__link" data-tab="listPage">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+          <span>الطلبات الواردة</span>
+        </button>
+        <button class="sidebar__link" data-tab="contentPage">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          <span>محتوى الموقع</span>
+        </button>
+        <button class="sidebar__link" data-tab="settingsPage">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span>الإعدادات</span>
+        </button>
+      </nav>
+      <div class="sidebar__footer">
+        <div class="sidebar__user" id="adminUsername"></div>
+        <button class="btn-logout" id="logoutBtn">تسجيل الخروج</button>
+      </div>
+    </aside>
 
-    </main>
+    <div class="app-body">
+      <header class="topbar">
+        <button class="topbar__menu" id="menuToggle" aria-label="القائمة">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <h1 class="topbar__title" id="topbarTitle">لوحة المعلومات</h1>
+      </header>
+
+      <main class="main">
+
+        <!-- ===== DASHBOARD PAGE ===== -->
+        <section id="dashboardPage" class="page page--active">
+          <section class="stats-row">
+            <div class="stat-card stat-card--total">
+              <div class="stat-card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></div>
+              <div class="stat-card__body"><span class="stat-card__number" id="statTotal">0</span><span class="stat-card__label">إجمالي الطلبات</span></div>
+            </div>
+            <div class="stat-card stat-card--new">
+              <div class="stat-card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg></div>
+              <div class="stat-card__body"><span class="stat-card__number" id="statNew">0</span><span class="stat-card__label">جديد</span></div>
+            </div>
+            <div class="stat-card stat-card--review">
+              <div class="stat-card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
+              <div class="stat-card__body"><span class="stat-card__number" id="statReview">0</span><span class="stat-card__label">قيد المراجعة</span></div>
+            </div>
+            <div class="stat-card stat-card--contacted">
+              <div class="stat-card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2A19.86 19.86 0 0 1 3.09 5.18 2 2 0 0 1 5.11 3h3a2 2 0 0 1 2 1.72c.13.81.36 1.6.68 2.34a2 2 0 0 1-.45 2.11L8.91 10.6a16 16 0 0 0 6.49 6.49l1.43-1.43a2 2 0 0 1 2.11-.45c.74.32 1.53.55 2.34.68a2 2 0 0 1 1.72 2.03z"/></svg></div>
+              <div class="stat-card__body"><span class="stat-card__number" id="statContacted">0</span><span class="stat-card__label">تم التواصل</span></div>
+            </div>
+            <div class="stat-card stat-card--closed">
+              <div class="stat-card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+              <div class="stat-card__body"><span class="stat-card__number" id="statClosed">0</span><span class="stat-card__label">مغلق</span></div>
+            </div>
+            <div class="stat-card stat-card--today">
+              <div class="stat-card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
+              <div class="stat-card__body"><span class="stat-card__number" id="statToday">0</span><span class="stat-card__label">اليوم</span></div>
+            </div>
+          </section>
+
+          <section class="charts-row">
+            <div class="chart-card chart-card--wide">
+              <h3 class="chart-card__title">الطلبات خلال آخر 30 يوماً</h3>
+              <canvas id="trendChart" height="90"></canvas>
+            </div>
+            <div class="chart-card">
+              <h3 class="chart-card__title">حالة الطلبات</h3>
+              <canvas id="statusChart" height="220"></canvas>
+            </div>
+            <div class="chart-card chart-card--wide">
+              <h3 class="chart-card__title">الخدمات الأكثر طلباً</h3>
+              <canvas id="serviceChart" height="140"></canvas>
+            </div>
+          </section>
+        </section>
+
+        <!-- ===== LEADS LIST PAGE ===== -->
+        <section id="listPage" class="page">
+          <div class="toolbar">
+            <div class="toolbar__start">
+              <h2 class="toolbar__title">الطلبات الواردة</h2>
+            </div>
+            <div class="toolbar__end">
+              <input type="search" id="searchInput" class="toolbar__search" placeholder="بحث بالاسم أو البريد أو الهاتف...">
+              <select id="statusFilter" class="toolbar__select">
+                <option value="">جميع الحالات</option>
+                <option value="new">جديد</option>
+                <option value="in_review">قيد المراجعة</option>
+                <option value="contacted">تم التواصل</option>
+                <option value="closed">مغلق</option>
+              </select>
+              <button id="exportBtn" class="btn-export">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="18" height="18"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                تصدير CSV
+              </button>
+            </div>
+          </div>
+          <div class="table-section">
+            <div class="table-wrap">
+              <table class="table" id="leadsTable">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>الاسم</th>
+                    <th>المسمى الوظيفي</th>
+                    <th>الشركة</th>
+                    <th>الخدمة المطلوبة</th>
+                    <th>البريد الإلكتروني</th>
+                    <th>الهاتف</th>
+                    <th>المسؤول</th>
+                    <th>الحالة</th>
+                    <th>التاريخ</th>
+                  </tr>
+                </thead>
+                <tbody id="leadsBody"></tbody>
+              </table>
+            </div>
+            <p id="emptyState" class="empty-state">لا توجد طلبات بعد</p>
+          </div>
+        </section>
+
+        <!-- ===== LEAD DETAIL PAGE ===== -->
+        <section id="detailPage" class="page">
+          <button class="btn-back" id="backBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            رجوع للقائمة
+          </button>
+          <div class="detail-page" id="detailContent"></div>
+        </section>
+
+        <!-- ===== CONTENT (CMS) PAGE ===== -->
+        <section id="contentPage" class="page">
+          <div class="toolbar">
+            <div class="toolbar__start"><h2 class="toolbar__title">محتوى الموقع</h2></div>
+          </div>
+
+          <div class="content-tabs">
+            <button class="content-tab is-active" data-content-tab="statsContent">الإحصائيات</button>
+            <button class="content-tab" data-content-tab="servicesContent">الخدمات</button>
+            <button class="content-tab" data-content-tab="logosContent">شعارات العملاء</button>
+          </div>
+
+          <!-- Stats editor -->
+          <div id="statsContent" class="content-panel content-panel--active">
+            <p class="content-hint">الأرقام الظاهرة في قسم "إنجازاتنا بالأرقام" بالموقع العام.</p>
+            <div class="table-section">
+              <div class="table-wrap">
+                <table class="table" id="statsTable">
+                  <thead><tr><th>الوصف</th><th>القيمة</th><th></th></tr></thead>
+                  <tbody id="statsBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Services editor -->
+          <div id="servicesContent" class="content-panel">
+            <p class="content-hint">وصف كل خدمة كما يظهر في بطاقات الخدمات بالموقع العام. أسماء الخدمات ثابتة (مرتبطة بنموذج التواصل)، ويمكن تعديل الوصف فقط.</p>
+            <div class="table-section">
+              <div class="table-wrap">
+                <table class="table" id="servicesTable">
+                  <thead><tr><th>الخدمة</th><th>الوصف</th><th></th></tr></thead>
+                  <tbody id="servicesBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Client logos editor -->
+          <div id="logosContent" class="content-panel">
+            <div class="content-panel__toolbar">
+              <p class="content-hint">شعارات "شركاء النجاح" في الموقع العام.</p>
+              <button class="btn-export" id="addLogoBtn">+ إضافة شعار</button>
+            </div>
+            <div class="logos-grid" id="logosGrid"></div>
+          </div>
+        </section>
+
+        <!-- ===== SETTINGS PAGE ===== -->
+        <section id="settingsPage" class="page">
+          <div class="toolbar">
+            <div class="toolbar__start"><h2 class="toolbar__title">الإعدادات</h2></div>
+          </div>
+
+          <div class="settings-card">
+            <h3>تكامل Google Workspace</h3>
+            <p class="content-hint">هذه الميزات تصبح متاحة بمجرد اشتراك الشركة في Google Workspace — غير مفعّلة حالياً.</p>
+            <ul class="settings-list">
+              <li>إنشاء وإدارة بريد الموظفين مباشرة من لوحة الإدارة (Directory API)</li>
+              <li>تسجيل الدخول للوحة الإدارة عبر حساب الشركة على Google (SSO)</li>
+              <li>إرسال إشعارات الطلبات عبر Gmail من عنوان الشركة</li>
+              <li>جدولة متابعات العملاء مباشرة في Google Calendar</li>
+              <li>تصدير الطلبات تلقائياً إلى Google Sheets</li>
+              <li>ربط صلاحيات لوحة الإدارة بعضوية مجموعات Google Groups</li>
+            </ul>
+          </div>
+
+          <div class="settings-card">
+            <h3>عن لوحة الإدارة</h3>
+            <p class="content-hint">مبنية على Supabase (قاعدة بيانات + مصادقة)، ومستضافة عبر AWS Amplify.</p>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ===== Generic Modal (logos / confirm) ===== -->
+  <div id="modalOverlay" class="modal-overlay">
+    <div class="modal" id="modalBox"></div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="js/admin.js"></script>
 </body>
 </html>

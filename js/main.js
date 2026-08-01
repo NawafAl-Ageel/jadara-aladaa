@@ -4,18 +4,80 @@
 
 document.addEventListener('DOMContentLoaded', () => {
 
+  /* ---------- Supabase Client ---------- */
+  function getMeta(name) {
+    return (document.querySelector(`meta[name="${name}"]`)?.getAttribute('content') || '').trim();
+  }
+  function getSupabase() {
+    const url = getMeta('supabase-url');
+    const anonKey = getMeta('supabase-anon-key');
+    // eslint-disable-next-line no-undef
+    if (!url || !anonKey || !window.supabase) return null;
+    // eslint-disable-next-line no-undef
+    return window.supabase.createClient(url, anonKey);
+  }
+  const supabase = getSupabase();
+
+  /* ---------- Dynamic Content (stats / services / client logos) ----------
+     Reads from Supabase and overrides the built-in markup below.
+     If the fetch fails or returns nothing, the hardcoded content stays as-is. */
+  (async function loadDynamicContent() {
+    if (!supabase) return;
+
+    try {
+      const { data: stats } = await supabase.from('site_stats').select('key,value');
+      if (stats && stats.length) {
+        stats.forEach(s => {
+          const item = document.querySelector(`.stats__item[data-stat-key="${s.key}"]`);
+          const number = item?.querySelector('.stats__number');
+          if (number) number.dataset.target = s.value;
+        });
+      }
+    } catch { /* keep hardcoded stats */ }
+
+    try {
+      const { data: services } = await supabase.from('services').select('service_key,description');
+      if (services && services.length) {
+        services.forEach(svc => {
+          const card = document.querySelector(`.services__card[data-service="${CSS.escape(svc.service_key)}"]`);
+          const desc = card?.querySelector('.services__item-desc');
+          if (desc && svc.description) desc.textContent = svc.description;
+        });
+      }
+    } catch { /* keep hardcoded descriptions */ }
+
+    try {
+      const { data: logos } = await supabase.from('client_logos').select('name,image_url,sort_order').order('sort_order');
+      const grid = document.querySelector('.clients__grid');
+      if (grid && logos && logos.length) {
+        grid.innerHTML = logos.map(l => `
+          <div class="clients__card" data-aos="fade-up">
+            <img src="${l.image_url}" alt="${l.name}" loading="lazy">
+          </div>
+        `).join('');
+        if (typeof AOS !== 'undefined') AOS.refreshHard();
+      }
+    } catch { /* keep hardcoded logos */ }
+  })();
+
   /* ---------- Intro Splash Screen ---------- */
   const intro = document.getElementById('intro');
-  if (intro) {
-    document.body.classList.add('intro-active');
-    const logoWrap = intro.querySelector('.intro__logo-wrap');
+  const logoWrap = intro?.querySelector('.intro__logo-wrap');
+  const skipIntro = new URLSearchParams(window.location.search).has('skip-intro');
 
-    // Fade in logo
+  if (intro && skipIntro) {
+    intro.remove();
+    document.body.classList.add('page-enter');
+    const url = new URL(window.location.href);
+    url.searchParams.delete('skip-intro');
+    history.replaceState(null, '', url.pathname + url.search + url.hash);
+  } else if (intro && logoWrap) {
+    document.body.classList.add('intro-active');
+
     requestAnimationFrame(() => {
       logoWrap.classList.add('visible');
     });
 
-    // After hold, fade out logo then fade out overlay
     setTimeout(() => {
       logoWrap.classList.remove('visible');
       intro.classList.add('intro--leaving');
@@ -25,6 +87,8 @@ document.addEventListener('DOMContentLoaded', () => {
         intro.remove();
       }, { once: true });
     }, 2000);
+  } else if (intro) {
+    intro.remove();
   }
 
   /* ---------- Services Accordion (card grid) ---------- */
@@ -150,13 +214,15 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   /* ---------- AOS Init ---------- */
-  AOS.init({
-    duration: 700,
-    easing: 'ease-out-cubic',
-    once: true,
-    offset: 80,
-    disable: () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  });
+  if (typeof AOS !== 'undefined') {
+    AOS.init({
+      duration: 700,
+      easing: 'ease-out-cubic',
+      once: true,
+      offset: 80,
+      disable: () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    });
+  }
 
   /* ---------- Navbar Scroll ---------- */
   const navbar = document.getElementById('navbar');
@@ -233,22 +299,11 @@ document.addEventListener('DOMContentLoaded', () => {
   if (statsSection) statsObserver.observe(statsSection);
 
   /* ---------- Multi-Step Contact Form ---------- */
-  function getMeta(name) {
-    return (document.querySelector(`meta[name="${name}"]`)?.getAttribute('content') || '').trim();
-  }
-  function getSupabase() {
-    const url = getMeta('supabase-url');
-    const anonKey = getMeta('supabase-anon-key');
-    // eslint-disable-next-line no-undef
-    if (!url || !anonKey || !window.supabase) return null;
-    // eslint-disable-next-line no-undef
-    return window.supabase.createClient(url, anonKey);
-  }
-  const supabase = getSupabase();
-
   const form = document.getElementById('contactForm');
   const step1 = document.getElementById('formStep1');
   const submitBtn = document.getElementById('submitBtn');
+  if (!form || !step1 || !submitBtn) return;
+
   const btnText = submitBtn.querySelector('.btn__text');
   const btnSpinner = submitBtn.querySelector('.btn__spinner');
   const successEl = document.getElementById('formSuccess');

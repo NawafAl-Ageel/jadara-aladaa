@@ -1,3 +1,16 @@
 # Archives (keep locally; too large for GitHub)
 *.zip
 Jadara_Project.zip
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+
+# Databases
+*.db
+*.db-shm
+*.db-wal
