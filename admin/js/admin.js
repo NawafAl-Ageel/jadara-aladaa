@@ -200,6 +200,7 @@ function renderStats(data) {
 
 function renderCharts(data) {
   if (typeof Chart === 'undefined') return;
+  Chart.defaults.font.family = "'IBM Plex Sans Arabic', sans-serif";
 
   // Trend: last 30 days
   const days = [];
