@@ -5,6 +5,8 @@
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
+const PUBLIC_SITE_URL = 'https://jadara-aladaa.sa';
+
 const statusLabels = {
   new: 'جديد',
   in_review: 'قيد المراجعة',
@@ -677,8 +679,9 @@ async function loadLogosContent() {
     for (const logo of (data || [])) {
       const card = document.createElement('div');
       card.className = 'logo-card';
+      const src = /^https?:\/\//i.test(logo.image_url) ? logo.image_url : `${PUBLIC_SITE_URL}/${logo.image_url}`;
       card.innerHTML = `
-        <img src="../${esc(logo.image_url)}" alt="${esc(logo.name)}" loading="lazy" onerror="this.style.opacity=0.25">
+        <img src="${esc(src)}" alt="${esc(logo.name)}" loading="lazy" onerror="this.style.opacity=0.25">
         <span class="logo-card__name">${esc(logo.name)}</span>
         <button class="logo-card__del" data-del-logo="${logo.id}" aria-label="حذف">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg>

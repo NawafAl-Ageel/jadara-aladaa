@@ -267,7 +267,6 @@ input, select, textarea { font-family: var(--font); }
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
   padding: 18px 20px;
-  min-height: 260px;
 }
 
 .chart-card--wide { grid-column: 1 / -1; }
@@ -278,6 +277,17 @@ input, select, textarea { font-family: var(--font); }
   color: var(--text);
   margin-bottom: 14px;
 }
+
+/* Fixed-height wrapper is required by Chart.js: with responsive:true +
+   maintainAspectRatio:false, a canvas whose parent has no explicit height
+   will inflate its container every resize tick, which grows the canvas
+   again next tick — an infinite growth loop. */
+.chart-card__canvas {
+  position: relative;
+  height: 220px;
+}
+
+.chart-card__canvas--tall { height: 280px; }
 
 /* ============================================
    TOOLBAR
