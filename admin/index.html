@@ -50,11 +50,39 @@
         </button>
         <button class="sidebar__link" data-tab="listPage">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
-          <span>الطلبات الواردة</span>
+          <span>العملاء المحتملون</span>
+        </button>
+        <button class="sidebar__link" data-tab="clientsPage">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span>العملاء</span>
+        </button>
+        <button class="sidebar__link" data-tab="projectsPage">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          <span>المشاريع</span>
+        </button>
+        <button class="sidebar__link" data-tab="proposalsPage">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/><line x1="9" y1="11" x2="12" y2="11"/></svg>
+          <span>العروض</span>
+        </button>
+        <button class="sidebar__link" data-tab="studioPage">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 3v18h18"/><path d="M7 16v-4M12 16V8M17 16v-7"/></svg>
+          <span>استوديو الاستشارات</span>
         </button>
         <button class="sidebar__link" data-tab="contentPage">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
           <span>محتوى الموقع</span>
+        </button>
+        <button class="sidebar__link" data-tab="reportsPage">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          <span>التقارير</span>
+        </button>
+        <button class="sidebar__link" data-tab="teamPage">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M20.5 21a8.5 8.5 0 0 0-17 0"/><circle cx="12" cy="8.5" r="4.5"/><path d="M9 12.5 11 15l4-5"/></svg>
+          <span>الفريق والصلاحيات</span>
+        </button>
+        <button class="sidebar__link" data-tab="integrationsPage">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="9" width="6" height="6" rx="1"/><rect x="16" y="9" width="6" height="6" rx="1"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+          <span>التكاملات</span>
         </button>
         <button class="sidebar__link" data-tab="settingsPage">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -126,7 +154,7 @@
         <section id="listPage" class="page">
           <div class="toolbar">
             <div class="toolbar__start">
-              <h2 class="toolbar__title">الطلبات الواردة</h2>
+              <h2 class="toolbar__title">العملاء المحتملون</h2>
             </div>
             <div class="toolbar__end">
               <input type="search" id="searchInput" class="toolbar__search" placeholder="بحث بالاسم أو البريد أو الهاتف...">
@@ -174,6 +202,30 @@
             رجوع للقائمة
           </button>
           <div class="detail-page" id="detailContent"></div>
+        </section>
+
+        <!-- ===== CLIENTS PAGE (placeholder — Phase 3) ===== -->
+        <section id="clientsPage" class="page">
+          <div class="toolbar"><div class="toolbar__start"><h2 class="toolbar__title">العملاء</h2></div></div>
+          <div class="empty-state">وحدة إدارة العملاء قيد الإنشاء — قادمة في المرحلة القادمة من تطوير لوحة الإدارة.</div>
+        </section>
+
+        <!-- ===== PROJECTS PAGE (placeholder — Phase 3) ===== -->
+        <section id="projectsPage" class="page">
+          <div class="toolbar"><div class="toolbar__start"><h2 class="toolbar__title">المشاريع</h2></div></div>
+          <div class="empty-state">وحدة إدارة المشاريع قيد الإنشاء — قادمة في المرحلة القادمة من تطوير لوحة الإدارة.</div>
+        </section>
+
+        <!-- ===== PROPOSALS PAGE (placeholder — Phase 4) ===== -->
+        <section id="proposalsPage" class="page">
+          <div class="toolbar"><div class="toolbar__start"><h2 class="toolbar__title">العروض</h2></div></div>
+          <div class="empty-state">وحدة إعداد العروض قيد الإنشاء — قادمة في المرحلة القادمة من تطوير لوحة الإدارة.</div>
+        </section>
+
+        <!-- ===== CONSULTING STUDIO PAGE (placeholder — Phase 5) ===== -->
+        <section id="studioPage" class="page">
+          <div class="toolbar"><div class="toolbar__start"><h2 class="toolbar__title">استوديو الاستشارات</h2></div></div>
+          <div class="empty-state">استوديو الاستشارات قيد الإنشاء — أداة لإنشاء تقارير تفاعلية للعملاء (تحليل السوق وخريطة الفرص) بدون تكرار الطلبات على ChatGPT. قادم في المرحلة القادمة من تطوير لوحة الإدارة.</div>
         </section>
 
         <!-- ===== CONTENT (CMS) PAGE ===== -->
@@ -224,23 +276,44 @@
           </div>
         </section>
 
+        <!-- ===== REPORTS PAGE (placeholder — Phase 7) ===== -->
+        <section id="reportsPage" class="page">
+          <div class="toolbar"><div class="toolbar__start"><h2 class="toolbar__title">التقارير</h2></div></div>
+          <div class="empty-state">تقارير المبيعات والمشاريع والاستوديو قيد الإنشاء — قادمة في مرحلة لاحقة من تطوير لوحة الإدارة.</div>
+        </section>
+
+        <!-- ===== TEAM & PERMISSIONS PAGE ===== -->
+        <section id="teamPage" class="page">
+          <div class="toolbar">
+            <div class="toolbar__start"><h2 class="toolbar__title">الفريق والصلاحيات</h2></div>
+          </div>
+          <p class="content-hint">قائمة موظفي لوحة الإدارة وأدوارهم. يمكن لمدير النظام فقط تغيير دور أي عضو. الحساب الذي كان يملك دخولاً كاملاً قبل هذا التحديث تم ترقيته تلقائياً إلى «مدير النظام» حتى لا يفقد أي صلاحية.</p>
+          <div class="table-section">
+            <div class="table-wrap">
+              <table class="table" id="teamTable">
+                <thead>
+                  <tr><th>الاسم</th><th>البريد الإلكتروني</th><th>الدور</th><th>الحالة</th><th></th></tr>
+                </thead>
+                <tbody id="teamBody"></tbody>
+              </table>
+            </div>
+            <p id="teamEmptyState" class="empty-state" style="display:none">لا يوجد أعضاء بعد</p>
+          </div>
+        </section>
+
+        <!-- ===== INTEGRATIONS PAGE ===== -->
+        <section id="integrationsPage" class="page">
+          <div class="toolbar">
+            <div class="toolbar__start"><h2 class="toolbar__title">التكاملات</h2></div>
+          </div>
+          <p class="content-hint">حالة كل تكامل معروضة بصدق — لا يوجد أي تكامل «مفعّل» وهمي. الإعداد الفعلي (مفاتيح API، أذونات Google) يتم لاحقاً خارج لوحة الإدارة قبل التفعيل.</p>
+          <div class="integrations-grid" id="integrationsGrid"></div>
+        </section>
+
         <!-- ===== SETTINGS PAGE ===== -->
         <section id="settingsPage" class="page">
           <div class="toolbar">
             <div class="toolbar__start"><h2 class="toolbar__title">الإعدادات</h2></div>
-          </div>
-
-          <div class="settings-card">
-            <h3>تكامل Google Workspace</h3>
-            <p class="content-hint">هذه الميزات تصبح متاحة بمجرد اشتراك الشركة في Google Workspace — غير مفعّلة حالياً.</p>
-            <ul class="settings-list">
-              <li>إنشاء وإدارة بريد الموظفين مباشرة من لوحة الإدارة (Directory API)</li>
-              <li>تسجيل الدخول للوحة الإدارة عبر حساب الشركة على Google (SSO)</li>
-              <li>إرسال إشعارات الطلبات عبر Gmail من عنوان الشركة</li>
-              <li>جدولة متابعات العملاء مباشرة في Google Calendar</li>
-              <li>تصدير الطلبات تلقائياً إلى Google Sheets</li>
-              <li>ربط صلاحيات لوحة الإدارة بعضوية مجموعات Google Groups</li>
-            </ul>
           </div>
 
           <div class="settings-card">
@@ -260,6 +333,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-  <script src="js/admin.js"></script>
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>
