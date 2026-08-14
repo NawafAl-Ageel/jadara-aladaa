@@ -6,6 +6,22 @@ import { openLeadDetail } from './lead-detail.js';
 
 let draggedLeadId = null;
 
+// Bound once (buttons are static HTML, not re-rendered per loadKanban call).
+// Uses scrollIntoView rather than manual scrollLeft math because RTL scrollLeft
+// sign conventions differ across browsers (Chrome/Firefox/Safari each handle
+// negative vs. reversed-positive differently) — scrollIntoView is native and
+// correct regardless of that.
+export function bindKanbanJumpButtons() {
+  $('#jumpToStartBtn').addEventListener('click', () => {
+    document.querySelector('.kanban-column[data-stage="new"]')
+      ?.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+  });
+  $('#jumpToEndBtn').addEventListener('click', () => {
+    document.querySelector('.kanban-column[data-stage="lost"]')
+      ?.scrollIntoView({ behavior: 'smooth', inline: 'end', block: 'nearest' });
+  });
+}
+
 export async function loadKanban() {
   const board = $('#kanbanBoard');
   board.innerHTML = '<p class="qa-empty">جارٍ التحميل...</p>';
@@ -92,8 +108,10 @@ async function moveLeadToStage(leadId, newStage, leadsCache) {
     if (error) throw error;
     await logLeadActivity(leadId, 'stage_changed', `تغيير المرحلة إلى «${salesStageLabels[newStage] || newStage}» (سحب وإفلات)`);
     loadKanban();
-  } catch {
-    alert('تعذر تحديث المرحلة');
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('moveLeadToStage failed', err);
+    alert('تعذر تحديث المرحلة: ' + (err?.message || String(err)));
     loadKanban();
   }
 }

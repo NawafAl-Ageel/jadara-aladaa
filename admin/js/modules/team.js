@@ -5,6 +5,19 @@ import { logAudit } from './audit.js';
 
 const ROLE_OPTIONS = Object.entries(roleLabels);
 
+let profilesCache = null;
+
+// Reused by clients.js/projects.js to populate "assign to" dropdowns without
+// each module needing its own profiles query.
+export async function fetchActiveProfiles() {
+  if (profilesCache) return profilesCache;
+  const sb = getSupabase();
+  const { data, error } = await sb.from('profiles').select('id, full_name, email').eq('active', true).order('full_name');
+  if (error) throw error;
+  profilesCache = data || [];
+  return profilesCache;
+}
+
 export async function loadTeam() {
   const sb = getSupabase();
   const tbody = $('#teamBody');

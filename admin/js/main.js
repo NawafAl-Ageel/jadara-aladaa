@@ -9,6 +9,8 @@ import { registerPageLoader, bindNavEvents, showPage } from './modules/nav.js';
 import { checkAuth, handleLogin, handleLogout } from './modules/auth.js';
 import { loadDashboard } from './modules/dashboard.js';
 import { loadLeadsPage, bindLeadsEvents } from './modules/leads.js';
+import { loadClients, bindClientsEvents } from './modules/clients.js';
+import { loadProjects, bindProjectsEvents } from './modules/projects.js';
 import { loadContent, openLogoModal } from './modules/content.js';
 import { loadTeam } from './modules/team.js';
 import { loadIntegrations } from './modules/integrations.js';
@@ -16,6 +18,8 @@ import { bindModalOverlayClose } from './modules/modal.js';
 
 registerPageLoader('dashboardPage', loadDashboard);
 registerPageLoader('listPage', loadLeadsPage);
+registerPageLoader('clientsPage', loadClients);
+registerPageLoader('projectsPage', loadProjects);
 registerPageLoader('contentPage', loadContent);
 registerPageLoader('teamPage', loadTeam);
 registerPageLoader('integrationsPage', loadIntegrations);
@@ -32,6 +36,8 @@ function bindEvents() {
   $('#backBtn').addEventListener('click', () => showPage('listPage'));
 
   bindLeadsEvents();
+  bindClientsEvents();
+  bindProjectsEvents();
   bindNavEvents();
 
   $$('.content-tab').forEach(tab => {

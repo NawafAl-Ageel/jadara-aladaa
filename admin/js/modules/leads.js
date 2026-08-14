@@ -3,7 +3,7 @@ import { getSupabase } from './supabase-client.js';
 import { state } from './state.js';
 import { salesStageLabels } from './pipeline.js';
 import { openLeadDetail } from './lead-detail.js';
-import { loadKanban } from './lead-kanban.js';
+import { loadKanban, bindKanbanJumpButtons } from './lead-kanban.js';
 import { logAudit } from './audit.js';
 
 const PAGE_SIZE = 50;
@@ -31,6 +31,7 @@ function switchView(view) {
   $('#viewKanbanBtn').classList.toggle('is-active', view === 'kanban');
   $('#tableView').hidden = view !== 'table';
   $('#kanbanBoard').hidden = view !== 'kanban';
+  $('#kanbanHint').hidden = view !== 'kanban';
   $('#bulkBar').hidden = view !== 'table' || tableState.selected.size === 0;
   loadLeadsPage();
 }
@@ -172,8 +173,10 @@ async function bulkAssign() {
     clearSelection();
     $('#bulkAssignee').value = '';
     loadLeads();
-  } catch {
-    alert('تعذر تنفيذ الإسناد الجماعي');
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('bulkAssign failed', err);
+    alert('تعذر تنفيذ الإسناد الجماعي: ' + (err?.message || String(err)));
   }
   btn.disabled = false;
 }
@@ -193,8 +196,10 @@ async function bulkChangeStage() {
     await logAudit('bulk_update', 'lead', null, null, { ids, sales_stage: stage });
     clearSelection();
     loadLeads();
-  } catch {
-    alert('تعذر تغيير المرحلة جماعياً');
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('bulkChangeStage failed', err);
+    alert('تعذر تغيير المرحلة جماعياً: ' + (err?.message || String(err)));
   }
   btn.disabled = false;
 }
@@ -258,6 +263,7 @@ export async function handleExport() {
 
 export function bindLeadsEvents() {
   initLeadsViewToggle();
+  bindKanbanJumpButtons();
 
   $('#searchInput').addEventListener('input', () => {
     clearTimeout(state.debounceTimer);

@@ -5,6 +5,7 @@ import { logAudit } from './audit.js';
 import { SALES_STAGES, salesStageLabels, priorityLabels, sourceLabels } from './pipeline.js';
 import { fetchLeadActivities, logLeadActivity, activityTypeLabel, LOGGABLE_ACTIVITY_TYPES } from './lead-activities.js';
 import { convertLeadToClient } from './clients.js';
+import { logClientActivity } from './client-activities.js';
 
 export async function openLeadDetail(id) {
   showPage('detailPage');
@@ -215,7 +216,10 @@ function renderDetail(lead, client, activities) {
           ? `<p class="content-hint">تم التحويل إلى عميل: <strong>${esc(client?.name || '')}</strong></p>`
           : `<button class="btn-back" id="convertClientBtn" style="width:100%">تحويل إلى عميل</button>`
         }
-        <button class="btn-back" id="convertProjectBtn" style="width:100%;margin-top:8px">تحويل إلى مشروع</button>
+        ${lead.converted_to_project_id
+          ? `<p class="content-hint">تم إنشاء مشروع من هذا العميل المحتمل.</p>`
+          : `<button class="btn-back" id="convertProjectBtn" style="width:100%;margin-top:8px">تحويل إلى مشروع</button>`
+        }
       </div>
 
       <div class="sidebar-card">
@@ -233,9 +237,7 @@ function renderDetail(lead, client, activities) {
   $('#activityForm').addEventListener('submit', (e) => addActivity(e, lead.id));
 
   $('#convertClientBtn')?.addEventListener('click', () => handleConvertToClient(lead));
-  $('#convertProjectBtn').addEventListener('click', () => {
-    alert('تحويل العميل المحتمل إلى مشروع سيتوفر في المرحلة القادمة (العملاء والمشاريع).');
-  });
+  $('#convertProjectBtn')?.addEventListener('click', () => handleConvertToProject(lead, client));
 
   document.querySelectorAll('.copy-btn[data-copy]').forEach(btn => {
     btn.addEventListener('click', async (e) => {
@@ -267,8 +269,10 @@ async function addActivity(e, leadId) {
     const activities = await fetchLeadActivities(leadId);
     $('#activityList').innerHTML = timelineHtml(activities);
     $('#activityForm').reset();
-  } catch {
-    alert('تعذر إضافة النشاط');
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('addActivity failed', err);
+    alert('تعذر إضافة النشاط: ' + (err?.message || String(err)));
   }
   btn.disabled = false;
 }
@@ -328,8 +332,10 @@ async function saveLead(prevLead) {
       client = c || null;
     }
     renderDetail(updated, client, activities);
-  } catch {
-    alert('حدث خطأ أثناء الحفظ');
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('saveLead failed', err);
+    alert('حدث خطأ أثناء الحفظ: ' + (err?.message || String(err)));
     btn.disabled = false;
     btn.textContent = 'حفظ التغييرات';
   }
@@ -349,9 +355,58 @@ async function handleConvertToClient(lead) {
       alert('تم تحويل هذا العميل المحتمل مسبقاً');
       openLeadDetail(lead.id);
     } else {
-      alert('تعذر التحويل');
+      // eslint-disable-next-line no-console
+      console.error('convertLeadToClient failed', err);
+      alert('تعذر التحويل: ' + (err?.message || String(err)));
       btn.disabled = false;
       btn.textContent = 'تحويل إلى عميل';
+    }
+  }
+}
+
+async function handleConvertToProject(lead, existingClient) {
+  if (!confirm(`إنشاء مشروع من «${lead.company || lead.name}»؟`)) return;
+  const btn = $('#convertProjectBtn');
+  btn.disabled = true;
+  btn.textContent = 'جارٍ الإنشاء...';
+
+  try {
+    const sb = getSupabase();
+    // A project needs a client — convert first if this lead hasn't been yet,
+    // so "won lead" can go straight to "active project" in one action.
+    let client = existingClient;
+    if (!client) {
+      client = await convertLeadToClient(lead);
+    }
+
+    const { data: project, error } = await sb.from('projects').insert([{
+      client_id: client.id,
+      name: lead.company || lead.name,
+      service: lead.service || null,
+      source_lead_id: lead.id
+    }]).select('*').single();
+    if (error) {
+      if (error.code === '23505') throw new Error('ALREADY_CONVERTED');
+      throw error;
+    }
+
+    await sb.from('leads').update({ converted_to_project_id: project.id }).eq('id', lead.id);
+    await logLeadActivity(lead.id, 'converted', 'تم إنشاء مشروع من هذا العميل المحتمل', `المشروع: ${project.name}`, { project_id: project.id });
+    await logClientActivity(client.id, 'project_created', `تم إنشاء مشروع: ${project.name}`);
+    await logAudit('create', 'project', project.id, null, { source_lead_id: lead.id, client_id: client.id });
+
+    const { openProjectDetail } = await import('./projects.js');
+    openProjectDetail(project.id);
+  } catch (err) {
+    if (err?.message === 'ALREADY_CONVERTED') {
+      alert('تم إنشاء مشروع من هذا العميل المحتمل مسبقاً');
+      openLeadDetail(lead.id);
+    } else {
+      // eslint-disable-next-line no-console
+      console.error('convertLeadToProject failed', err);
+      alert('تعذر إنشاء المشروع: ' + (err?.message || String(err)));
+      btn.disabled = false;
+      btn.textContent = 'تحويل إلى مشروع';
     }
   }
 }
@@ -365,7 +420,9 @@ async function deleteLead(id) {
     if (error) throw error;
     await logAudit('delete', 'lead', id);
     showPage('listPage');
-  } catch {
-    alert('تعذر الحذف');
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('deleteLead failed', err);
+    alert('تعذر الحذف: ' + (err?.message || String(err)));
   }
 }

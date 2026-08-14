@@ -236,6 +236,12 @@
             </div>
           </div>
 
+          <div class="kanban-board__hint" id="kanbanHint" hidden>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+            مرر أفقياً لعرض جميع المراحل السبع
+            <button type="button" class="kanban-board__jump" id="jumpToStartBtn">البداية (جديد)</button>
+            <button type="button" class="kanban-board__jump" id="jumpToEndBtn">النهاية (فاز / مفقود)</button>
+          </div>
           <div class="kanban-board" id="kanbanBoard" hidden></div>
         </section>
 
@@ -248,16 +254,91 @@
           <div class="detail-page" id="detailContent"></div>
         </section>
 
-        <!-- ===== CLIENTS PAGE (placeholder — Phase 3) ===== -->
+        <!-- ===== CLIENTS PAGE ===== -->
         <section id="clientsPage" class="page">
-          <div class="toolbar"><div class="toolbar__start"><h2 class="toolbar__title">العملاء</h2></div></div>
-          <div class="empty-state">وحدة إدارة العملاء قيد الإنشاء — قادمة في المرحلة القادمة من تطوير لوحة الإدارة.</div>
+          <div class="toolbar">
+            <div class="toolbar__start"><h2 class="toolbar__title">العملاء</h2></div>
+            <div class="toolbar__end">
+              <input type="search" id="clientSearchInput" class="toolbar__search" placeholder="بحث بالاسم أو الصناعة...">
+              <select id="clientStatusFilter" class="toolbar__select">
+                <option value="">جميع الحالات</option>
+                <option value="prospect">محتمل</option>
+                <option value="active">نشط</option>
+                <option value="inactive">غير نشط</option>
+                <option value="former_client">عميل سابق</option>
+              </select>
+              <button id="addClientBtn" class="btn-export">+ إضافة عميل</button>
+            </div>
+          </div>
+          <div class="table-section">
+            <div class="table-wrap">
+              <table class="table" id="clientsTable">
+                <thead>
+                  <tr><th>#</th><th>الاسم</th><th>الصناعة</th><th>الحالة</th><th>المسؤول</th><th>تاريخ الإنشاء</th></tr>
+                </thead>
+                <tbody id="clientsBody"></tbody>
+              </table>
+            </div>
+            <p id="clientsEmptyState" class="empty-state" style="display:none">لا يوجد عملاء بعد</p>
+            <div class="pagination" id="clientsPagination">
+              <button type="button" class="btn-back" id="clientsPrevPageBtn">السابق</button>
+              <span id="clientsPageIndicator" class="pagination__indicator"></span>
+              <button type="button" class="btn-back" id="clientsNextPageBtn">التالي</button>
+            </div>
+          </div>
         </section>
 
-        <!-- ===== PROJECTS PAGE (placeholder — Phase 3) ===== -->
+        <!-- ===== CLIENT DETAIL PAGE ===== -->
+        <section id="clientDetailPage" class="page">
+          <button class="btn-back" id="clientBackBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            رجوع لقائمة العملاء
+          </button>
+          <div class="detail-page" id="clientDetailContent"></div>
+        </section>
+
+        <!-- ===== PROJECTS PAGE ===== -->
         <section id="projectsPage" class="page">
-          <div class="toolbar"><div class="toolbar__start"><h2 class="toolbar__title">المشاريع</h2></div></div>
-          <div class="empty-state">وحدة إدارة المشاريع قيد الإنشاء — قادمة في المرحلة القادمة من تطوير لوحة الإدارة.</div>
+          <div class="toolbar">
+            <div class="toolbar__start"><h2 class="toolbar__title">المشاريع</h2></div>
+            <div class="toolbar__end">
+              <input type="search" id="projectSearchInput" class="toolbar__search" placeholder="بحث باسم المشروع...">
+              <select id="projectStatusFilter" class="toolbar__select">
+                <option value="">جميع الحالات</option>
+                <option value="planning">تخطيط</option>
+                <option value="active">نشط</option>
+                <option value="on_hold">متوقف</option>
+                <option value="completed">مكتمل</option>
+                <option value="cancelled">ملغى</option>
+              </select>
+              <button id="addProjectBtn" class="btn-export">+ مشروع جديد</button>
+            </div>
+          </div>
+          <div class="table-section">
+            <div class="table-wrap">
+              <table class="table" id="projectsTable">
+                <thead>
+                  <tr><th>#</th><th>المشروع</th><th>العميل</th><th>مدير المشروع</th><th>الحالة</th><th>الصحة</th><th>التقدم</th></tr>
+                </thead>
+                <tbody id="projectsBody"></tbody>
+              </table>
+            </div>
+            <p id="projectsEmptyState" class="empty-state" style="display:none">لا توجد مشاريع بعد</p>
+            <div class="pagination" id="projectsPagination">
+              <button type="button" class="btn-back" id="projectsPrevPageBtn">السابق</button>
+              <span id="projectsPageIndicator" class="pagination__indicator"></span>
+              <button type="button" class="btn-back" id="projectsNextPageBtn">التالي</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== PROJECT DETAIL PAGE ===== -->
+        <section id="projectDetailPage" class="page">
+          <button class="btn-back" id="projectBackBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            رجوع لقائمة المشاريع
+          </button>
+          <div class="detail-page" id="projectDetailContent"></div>
         </section>
 
         <!-- ===== PROPOSALS PAGE (placeholder — Phase 4) ===== -->

@@ -426,6 +426,51 @@ input, select, textarea { font-family: var(--font); }
 .due-badge.is-overdue { background: #fee2e2; color: #991b1b; }
 .due-badge.is-today { background: #fef3c7; color: #92400e; }
 
+.badge--client-prospect { background: #e0e7ff; color: #3730a3; }
+.badge--client-active { background: #dcfce7; color: #166534; }
+.badge--client-inactive { background: #f1f2f4; color: #6b7280; }
+.badge--client-former_client { background: #fee2e2; color: #991b1b; }
+
+.badge--project-planning { background: #e0e7ff; color: #3730a3; }
+.badge--project-active { background: #dcfce7; color: #166534; }
+.badge--project-on_hold { background: #fef3c7; color: #92400e; }
+.badge--project-completed { background: #dbeafe; color: #1e40af; }
+.badge--project-cancelled { background: #fee2e2; color: #991b1b; }
+
+.badge--health-on_track { background: #dcfce7; color: #166534; }
+.badge--health-at_risk { background: #fef3c7; color: #92400e; }
+.badge--health-delayed { background: #fee2e2; color: #991b1b; }
+
+/* ============================================
+   CHECKLISTS (milestones / tasks / deliverables), CONTACTS, PROGRESS
+   ============================================ */
+
+.progress-bar { width: 100%; min-width: 70px; height: 8px; background: #eef1f4; border-radius: 999px; overflow: hidden; }
+.progress-bar__fill { height: 100%; background: var(--accent); border-radius: 999px; transition: width 0.2s; }
+
+.checklist-row {
+  display: flex; align-items: center; gap: 10px; padding: 9px 12px; margin-bottom: 8px;
+  background: #fafbfc; border: 1px solid var(--border); border-radius: 8px; flex-wrap: wrap;
+}
+.checklist-row:last-child { margin-bottom: 0; }
+.checklist-row__title { flex: 1; font-size: 0.84rem; color: var(--text); min-width: 140px; }
+.checklist-row select { padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.78rem; }
+
+.contacts-list, .attachment-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+
+.contact-row, .attachment-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 10px 12px; background: #fafbfc; border: 1px solid var(--border); border-radius: 8px;
+}
+
+.attachment-upload { margin-bottom: 4px; }
+.attachment-row__info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.attachment-row__name { font-size: 0.84rem; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.attachment-row__meta { font-size: 0.7rem; color: var(--text-muted); }
+.attachment-row__actions { display: flex; gap: 6px; flex-shrink: 0; }
+.attachment-row__actions .btn-back, .attachment-row__actions .btn-delete { padding: 5px 10px; font-size: 0.74rem; width: auto; }
+.checklist-row .btn-delete, .contact-row .btn-delete { padding: 5px 10px; font-size: 0.74rem; width: auto; }
+
 .empty-state { text-align: center; padding: 40px 24px; color: var(--text-muted); font-size: 0.92rem; }
 
 /* ============================================
@@ -542,44 +587,82 @@ input, select, textarea { font-family: var(--font); }
    ============================================ */
 
 .kanban-board {
-  display: flex; gap: 14px; overflow-x: auto; padding-bottom: 12px; align-items: flex-start;
+  display: flex; gap: 12px; overflow-x: auto; padding: 4px 4px 16px 40px;
+  align-items: flex-start;
+  scrollbar-width: auto; scrollbar-color: #b6bec9 #e9ecf0;
 }
+
+.kanban-board::-webkit-scrollbar { height: 12px; }
+.kanban-board::-webkit-scrollbar-track { background: #e9ecf0; border-radius: 999px; }
+.kanban-board::-webkit-scrollbar-thumb { background: #b6bec9; border-radius: 999px; border: 2px solid #e9ecf0; }
+.kanban-board::-webkit-scrollbar-thumb:hover { background: #98a2b0; }
+
+.kanban-board__hint {
+  font-size: 0.76rem; color: var(--text-muted); margin-bottom: 8px; display: flex;
+  align-items: center; gap: 10px;
+}
+
+.kanban-board__jump {
+  display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 999px;
+  border: 1px solid var(--border); background: #fff; color: var(--text); font-size: 0.74rem; font-weight: 600;
+}
+.kanban-board__jump:hover { border-color: var(--accent); color: var(--accent); }
 
 .kanban-column {
-  flex: 0 0 240px; background: #f2f4f7; border-radius: var(--radius); padding: 10px;
-  display: flex; flex-direction: column; gap: 8px; min-height: 120px; transition: background 0.15s;
+  flex: 0 0 232px; background: #f2f4f7; border-radius: 12px;
+  padding: 12px; display: flex; flex-direction: column; gap: 10px; min-height: 200px;
+  border-top: 3px solid var(--border); transition: background 0.18s, box-shadow 0.18s;
 }
 
-.kanban-column.is-drop-target { background: #dde7f2; }
+.kanban-column[data-stage="new"] { border-top-color: #1e40af; }
+.kanban-column[data-stage="contacted"] { border-top-color: #374151; }
+.kanban-column[data-stage="qualified"] { border-top-color: #5b21b6; }
+.kanban-column[data-stage="proposal_sent"] { border-top-color: #92400e; }
+.kanban-column[data-stage="negotiation"] { border-top-color: #9a3412; }
+.kanban-column[data-stage="won"] { border-top-color: #166534; }
+.kanban-column[data-stage="lost"] { border-top-color: #991b1b; }
+
+.kanban-column.is-drop-target { background: #dde7f2; box-shadow: inset 0 0 0 2px var(--accent); }
 
 .kanban-column__header {
   display: flex; align-items: center; justify-content: space-between;
-  font-size: 0.8rem; font-weight: 700; color: var(--text); padding: 2px 4px;
+  font-size: 0.82rem; font-weight: 700; color: var(--text); padding: 2px 4px;
 }
 
 .kanban-column__count {
   background: #fff; border: 1px solid var(--border); border-radius: 999px;
-  padding: 1px 8px; font-size: 0.7rem; color: var(--text-muted);
+  padding: 1px 9px; font-size: 0.72rem; color: var(--text-muted); font-weight: 700;
 }
 
-.kanban-column__total { font-size: 0.7rem; color: var(--text-muted); padding: 0 4px; }
+.kanban-column__total { font-size: 0.72rem; color: var(--text-muted); padding: 0 4px; font-weight: 600; }
 
-.kanban-column__cards { display: flex; flex-direction: column; gap: 8px; min-height: 40px; }
+.kanban-column__cards {
+  display: flex; flex-direction: column; gap: 9px; min-height: 60px; flex: 1;
+}
+
+.kanban-column__cards .qa-empty {
+  display: block; text-align: center; padding: 22px 8px; font-size: 0.75rem;
+  color: #a8b0bc; border: 1.5px dashed #d5dae1; border-radius: 8px; margin: 0;
+}
 
 .kanban-card {
-  background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px;
-  box-shadow: var(--shadow); cursor: grab; transition: box-shadow 0.15s, opacity 0.15s;
+  background: #fff; border: 1px solid var(--border); border-inline-start: 3px solid var(--accent);
+  border-radius: 8px; padding: 11px 13px; box-shadow: var(--shadow); cursor: grab;
+  transition: box-shadow 0.15s, transform 0.15s, opacity 0.15s;
 }
-.kanban-card:hover { box-shadow: var(--shadow-lg); }
-.kanban-card.is-dragging { opacity: 0.4; }
+.kanban-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-1px); }
+.kanban-card:active { cursor: grabbing; }
+.kanban-card.is-dragging { opacity: 0.35; transform: scale(0.97); }
 
-.kanban-card__title { font-size: 0.85rem; font-weight: 700; color: var(--text); }
-.kanban-card__sub { font-size: 0.75rem; color: var(--text-muted); margin-top: 1px; }
-.kanban-card__value { font-size: 0.75rem; color: var(--accent); font-weight: 600; margin-top: 4px; }
+.kanban-card__title { font-size: 0.86rem; font-weight: 700; color: var(--text); line-height: 1.4; }
+.kanban-card__sub { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+.kanban-card__value { font-size: 0.76rem; color: var(--accent); font-weight: 700; margin-top: 6px; }
 
-.kanban-card__meta { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 6px; }
-.kanban-card__assignee { font-size: 0.68rem; color: var(--text-muted); }
-.kanban-card__due { font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; background: #eef1f4; color: var(--text-muted); }
+.kanban-card__meta { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 8px; }
+.kanban-card__assignee {
+  font-size: 0.68rem; color: var(--text-muted); background: #f2f4f7; border-radius: 4px; padding: 2px 6px;
+}
+.kanban-card__due { font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; background: #eef1f4; color: var(--text-muted); font-weight: 600; }
 .kanban-card__due.is-overdue { background: #fee2e2; color: #991b1b; }
 .kanban-card__due.is-today { background: #fef3c7; color: #92400e; }
 
