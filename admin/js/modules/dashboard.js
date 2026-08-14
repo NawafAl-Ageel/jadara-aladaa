@@ -9,6 +9,7 @@ export async function loadDashboard() {
     const { data, error } = await sb
       .from('leads')
       .select('id,status,service,created_at')
+      .is('deleted_at', null)
       .order('created_at', { ascending: false })
       .limit(5000);
     if (error) throw error;

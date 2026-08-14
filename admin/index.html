@@ -155,15 +155,28 @@
           <div class="toolbar">
             <div class="toolbar__start">
               <h2 class="toolbar__title">العملاء المحتملون</h2>
+              <div class="view-toggle">
+                <button type="button" id="viewTableBtn" class="view-toggle__btn is-active">جدول</button>
+                <button type="button" id="viewKanbanBtn" class="view-toggle__btn">مسار</button>
+              </div>
             </div>
             <div class="toolbar__end">
               <input type="search" id="searchInput" class="toolbar__search" placeholder="بحث بالاسم أو البريد أو الهاتف...">
               <select id="statusFilter" class="toolbar__select">
-                <option value="">جميع الحالات</option>
+                <option value="">جميع المراحل</option>
                 <option value="new">جديد</option>
-                <option value="in_review">قيد المراجعة</option>
                 <option value="contacted">تم التواصل</option>
-                <option value="closed">مغلق</option>
+                <option value="qualified">مؤهل</option>
+                <option value="proposal_sent">تم إرسال العرض</option>
+                <option value="negotiation">تفاوض</option>
+                <option value="won">فاز</option>
+                <option value="lost">مفقود</option>
+              </select>
+              <select id="sortSelect" class="toolbar__select">
+                <option value="created_desc">الأحدث أولاً</option>
+                <option value="created_asc">الأقدم أولاً</option>
+                <option value="follow_up_asc">أقرب متابعة</option>
+                <option value="value_desc">أعلى قيمة</option>
               </select>
               <button id="exportBtn" class="btn-export">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="18" height="18"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -171,20 +184,44 @@
               </button>
             </div>
           </div>
-          <div class="table-section">
+
+          <div class="chip-row">
+            <button type="button" class="chip" id="chipOverdue">متأخرة المتابعة</button>
+            <button type="button" class="chip" id="chipToday">متابعة اليوم</button>
+          </div>
+
+          <div class="bulk-bar" id="bulkBar" hidden>
+            <span id="bulkCount" class="bulk-bar__count"></span>
+            <input type="text" id="bulkAssignee" class="inline-input" placeholder="تعيين لموظف (اسم أو بريد)">
+            <button type="button" class="btn-save btn-save--sm" id="bulkAssignBtn">تعيين</button>
+            <select id="bulkStage" class="toolbar__select">
+              <option value="new">جديد</option>
+              <option value="contacted">تم التواصل</option>
+              <option value="qualified">مؤهل</option>
+              <option value="proposal_sent">تم إرسال العرض</option>
+              <option value="negotiation">تفاوض</option>
+              <option value="won">فاز</option>
+              <option value="lost">مفقود</option>
+            </select>
+            <button type="button" class="btn-save btn-save--sm" id="bulkStageBtn">تغيير المرحلة</button>
+            <button type="button" class="btn-back" id="bulkClearBtn">إلغاء التحديد</button>
+          </div>
+
+          <div class="table-section" id="tableView">
             <div class="table-wrap">
               <table class="table" id="leadsTable">
                 <thead>
                   <tr>
+                    <th><input type="checkbox" id="selectAllCheckbox" aria-label="تحديد الكل"></th>
                     <th>#</th>
                     <th>الاسم</th>
-                    <th>المسمى الوظيفي</th>
                     <th>الشركة</th>
                     <th>الخدمة المطلوبة</th>
                     <th>البريد الإلكتروني</th>
                     <th>الهاتف</th>
                     <th>المسؤول</th>
-                    <th>الحالة</th>
+                    <th>المرحلة</th>
+                    <th>المتابعة القادمة</th>
                     <th>التاريخ</th>
                   </tr>
                 </thead>
@@ -192,7 +229,14 @@
               </table>
             </div>
             <p id="emptyState" class="empty-state">لا توجد طلبات بعد</p>
+            <div class="pagination" id="pagination">
+              <button type="button" class="btn-back" id="prevPageBtn">السابق</button>
+              <span id="pageIndicator" class="pagination__indicator"></span>
+              <button type="button" class="btn-back" id="nextPageBtn">التالي</button>
+            </div>
           </div>
+
+          <div class="kanban-board" id="kanbanBoard" hidden></div>
         </section>
 
         <!-- ===== LEAD DETAIL PAGE ===== -->

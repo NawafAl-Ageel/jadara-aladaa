@@ -5,18 +5,17 @@
 
 import { $, $$ } from './modules/dom.js';
 import { initSupabase } from './modules/supabase-client.js';
-import { state } from './modules/state.js';
 import { registerPageLoader, bindNavEvents, showPage } from './modules/nav.js';
 import { checkAuth, handleLogin, handleLogout } from './modules/auth.js';
 import { loadDashboard } from './modules/dashboard.js';
-import { loadLeads, handleExport } from './modules/leads.js';
+import { loadLeadsPage, bindLeadsEvents } from './modules/leads.js';
 import { loadContent, openLogoModal } from './modules/content.js';
 import { loadTeam } from './modules/team.js';
 import { loadIntegrations } from './modules/integrations.js';
 import { bindModalOverlayClose } from './modules/modal.js';
 
 registerPageLoader('dashboardPage', loadDashboard);
-registerPageLoader('listPage', loadLeads);
+registerPageLoader('listPage', loadLeadsPage);
 registerPageLoader('contentPage', loadContent);
 registerPageLoader('teamPage', loadTeam);
 registerPageLoader('integrationsPage', loadIntegrations);
@@ -30,15 +29,9 @@ document.addEventListener('DOMContentLoaded', () => {
 function bindEvents() {
   $('#loginForm').addEventListener('submit', handleLogin);
   $('#logoutBtn').addEventListener('click', handleLogout);
-
-  $('#searchInput').addEventListener('input', () => {
-    clearTimeout(state.debounceTimer);
-    state.debounceTimer = setTimeout(() => loadLeads(), 300);
-  });
-  $('#statusFilter').addEventListener('change', () => loadLeads());
-  $('#exportBtn').addEventListener('click', handleExport);
   $('#backBtn').addEventListener('click', () => showPage('listPage'));
 
+  bindLeadsEvents();
   bindNavEvents();
 
   $$('.content-tab').forEach(tab => {

@@ -1,31 +1,92 @@
-import { $ } from './dom.js';
-import { esc, formatDate, copyToClipboard } from './dom.js';
+import { $, $$, esc, formatDate } from './dom.js';
 import { getSupabase } from './supabase-client.js';
-import { statusLabels } from './constants.js';
-import { showPage } from './nav.js';
+import { state } from './state.js';
+import { salesStageLabels } from './pipeline.js';
+import { openLeadDetail } from './lead-detail.js';
+import { loadKanban } from './lead-kanban.js';
 import { logAudit } from './audit.js';
 
+const PAGE_SIZE = 50;
+
+const tableState = {
+  page: 0,
+  totalCount: 0,
+  activeChip: null, // null | 'overdue' | 'today'
+  selected: new Set(),
+  currentPageLeadIds: []
+};
+
+let currentView = 'table';
+
+/* ---------- View toggle (Table / Kanban) ---------- */
+
+export function initLeadsViewToggle() {
+  $('#viewTableBtn').addEventListener('click', () => switchView('table'));
+  $('#viewKanbanBtn').addEventListener('click', () => switchView('kanban'));
+}
+
+function switchView(view) {
+  currentView = view;
+  $('#viewTableBtn').classList.toggle('is-active', view === 'table');
+  $('#viewKanbanBtn').classList.toggle('is-active', view === 'kanban');
+  $('#tableView').hidden = view !== 'table';
+  $('#kanbanBoard').hidden = view !== 'kanban';
+  $('#bulkBar').hidden = view !== 'table' || tableState.selected.size === 0;
+  loadLeadsPage();
+}
+
+// Registered as the listPage loader in main.js — dispatches to whichever
+// view (table/Kanban) is currently active, so navigating away and back
+// always refreshes the right one.
+export function loadLeadsPage() {
+  if (currentView === 'kanban') loadKanban();
+  else loadLeads();
+}
+
+/* ---------- Table view ---------- */
+
 export async function loadLeads() {
+  if (currentView !== 'table') return;
   const sb = getSupabase();
   const search = $('#searchInput').value.trim();
-  const status = $('#statusFilter').value;
+  const stage = $('#statusFilter').value;
+  const sort = $('#sortSelect').value;
 
   try {
     let q = sb
       .from('leads')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(500);
+      .select('*', { count: 'exact' })
+      .is('deleted_at', null);
 
-    if (status) q = q.eq('status', status);
+    if (stage) q = q.eq('sales_stage', stage);
     if (search) {
       const s = search.replace(/%/g, '\\%').replace(/_/g, '\\_');
       q = q.or(`name.ilike.%${s}%,company.ilike.%${s}%,email.ilike.%${s}%,phone.ilike.%${s}%`);
     }
 
-    const { data: leads, error } = await q;
+    const today = new Date().toISOString().slice(0, 10);
+    if (tableState.activeChip === 'overdue') {
+      q = q.lt('next_follow_up_date', today).not('sales_stage', 'in', '(won,lost)');
+    } else if (tableState.activeChip === 'today') {
+      q = q.eq('next_follow_up_date', today).not('sales_stage', 'in', '(won,lost)');
+    }
+
+    if (sort === 'created_asc') q = q.order('created_at', { ascending: true });
+    else if (sort === 'follow_up_asc') q = q.order('next_follow_up_date', { ascending: true, nullsFirst: false });
+    else if (sort === 'value_desc') q = q.order('estimated_value', { ascending: false, nullsFirst: false });
+    else q = q.order('created_at', { ascending: false });
+
+    const from = tableState.page * PAGE_SIZE;
+    q = q.range(from, from + PAGE_SIZE - 1);
+
+    const { data: leads, error, count } = await q;
     if (error) throw error;
+
+    tableState.totalCount = count || 0;
+    tableState.currentPageLeadIds = (leads || []).map(l => l.id);
     renderTable(leads || []);
+    renderPagination();
+
     const empty = $('#emptyState');
     const wrap = $('#listPage .table-wrap');
     if (!leads || leads.length === 0) {
@@ -43,265 +104,123 @@ function renderTable(leads) {
   tbody.innerHTML = '';
 
   for (const lead of leads) {
+    const overdue = lead.next_follow_up_date && !['won', 'lost'].includes(lead.sales_stage) && lead.next_follow_up_date < new Date().toISOString().slice(0, 10);
+    const dueToday = lead.next_follow_up_date === new Date().toISOString().slice(0, 10);
     const tr = document.createElement('tr');
-    tr.addEventListener('click', () => openLeadDetail(lead.id));
     tr.innerHTML = `
-      <td>${lead.id}</td>
+      <td><input type="checkbox" class="row-select" data-id="${lead.id}" ${tableState.selected.has(lead.id) ? 'checked' : ''}></td>
+      <td>${esc(lead.lead_number || lead.id)}</td>
       <td><strong>${esc(lead.name)}</strong></td>
-      <td>${esc(lead.job_title || '—')}</td>
       <td>${esc(lead.company || '—')}</td>
       <td>${esc(lead.service || '—')}</td>
-      <td><a href="mailto:${esc(lead.email)}" onclick="event.stopPropagation()">${esc(lead.email)}</a></td>
+      <td><a href="mailto:${esc(lead.email)}">${esc(lead.email)}</a></td>
       <td dir="ltr">${esc(lead.phone)}</td>
       <td>${esc(lead.assigned_to || '—')}</td>
-      <td><span class="badge badge--${lead.status}">${statusLabels[lead.status] || lead.status}</span></td>
+      <td><span class="badge badge--stage-${esc(lead.sales_stage)}">${esc(salesStageLabels[lead.sales_stage] || lead.sales_stage)}</span></td>
+      <td>${lead.next_follow_up_date ? `<span class="due-badge ${overdue ? 'is-overdue' : ''} ${dueToday ? 'is-today' : ''}">${formatDate(lead.next_follow_up_date)}</span>` : '—'}</td>
       <td>${formatDate(lead.created_at)}</td>
     `;
+    tr.querySelector('.row-select').addEventListener('click', (e) => e.stopPropagation());
+    tr.querySelector('.row-select').addEventListener('change', (e) => toggleSelect(lead.id, e.target.checked));
+    tr.addEventListener('click', () => openLeadDetail(lead.id));
     tbody.appendChild(tr);
   }
+
+  $('#selectAllCheckbox').checked = leads.length > 0 && leads.every(l => tableState.selected.has(l.id));
 }
 
-async function openLeadDetail(id) {
-  showPage('detailPage');
-  $('#detailContent').innerHTML = '<p style="text-align:center;padding:48px;color:var(--text-muted)">جارٍ التحميل...</p>';
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-
-  try {
-    const sb = getSupabase();
-    const { data: lead, error } = await sb.from('leads').select('*').eq('id', id).single();
-    if (error) throw error;
-    renderDetail(lead);
-  } catch {
-    $('#detailContent').innerHTML = '<p style="text-align:center;color:#dc2626;padding:48px">تعذر تحميل البيانات</p>';
-  }
+function renderPagination() {
+  const totalPages = Math.max(1, Math.ceil(tableState.totalCount / PAGE_SIZE));
+  $('#pageIndicator').textContent = `صفحة ${tableState.page + 1} من ${totalPages} (${tableState.totalCount} نتيجة)`;
+  $('#prevPageBtn').disabled = tableState.page === 0;
+  $('#nextPageBtn').disabled = tableState.page + 1 >= totalPages;
 }
 
-function renderActivity(activity) {
-  if (!Array.isArray(activity) || activity.length === 0) {
-    return '<p class="qa-empty">لا يوجد سجل تغييرات بعد</p>';
-  }
-  return activity.slice().reverse().map(a => `
-    <div class="activity-item">
-      <span class="activity-item__dot"></span>
-      <div>
-        <p class="activity-item__text">${esc(a.text)}</p>
-        <span class="activity-item__date">${formatDate(a.at)}</span>
-      </div>
-    </div>
-  `).join('');
+/* ---------- Selection & bulk actions ---------- */
+
+function toggleSelect(id, checked) {
+  if (checked) tableState.selected.add(id);
+  else tableState.selected.delete(id);
+  updateBulkBar();
 }
 
-function renderDetail(lead) {
-  $('#detailContent').innerHTML = `
-    <div class="detail-main">
-      <!-- Contact Info Card -->
-      <div class="detail-card">
-        <div class="detail-card__header">
-          <h3>معلومات التواصل</h3>
-          <span class="badge badge--${lead.status}">${statusLabels[lead.status] || lead.status}</span>
-        </div>
-        <div class="detail-card__body">
-          <div class="detail-grid">
-            <div class="detail-item">
-              <span class="detail-label">الاسم</span>
-              <span class="detail-value">${esc(lead.name)}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">المسمى الوظيفي</span>
-              <span class="detail-value">${esc(lead.job_title || '—')}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">الشركة</span>
-              <span class="detail-value">${esc(lead.company || '—')}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">الخدمة المطلوبة</span>
-              <span class="detail-value">${esc(lead.service || '—')}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">البريد الإلكتروني</span>
-              <span class="detail-value detail-value-row">
-                <a href="mailto:${esc(lead.email)}">${esc(lead.email)}</a>
-                <button type="button" class="copy-btn" data-copy="${esc(lead.email)}" data-label="البريد الإلكتروني" aria-label="نسخ البريد الإلكتروني" title="نسخ">
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <rect x="9" y="9" width="11" height="11" rx="2"></rect>
-                    <path d="M5 15V6a2 2 0 0 1 2-2h9"></path>
-                  </svg>
-                </button>
-              </span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">الهاتف</span>
-              <span class="detail-value detail-value-row">
-                <a href="tel:${esc(lead.phone)}" class="phone-link" dir="ltr">${esc(lead.phone)}</a>
-                <button type="button" class="copy-btn" data-copy="${esc(lead.phone)}" data-label="الهاتف" aria-label="نسخ رقم الهاتف" title="نسخ">
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <rect x="9" y="9" width="11" height="11" rx="2"></rect>
-                    <path d="M5 15V6a2 2 0 0 1 2-2h9"></path>
-                  </svg>
-                </button>
-              </span>
-            </div>
-            <div class="detail-item detail-item--full">
-              <span class="detail-label">الرسالة</span>
-              <span class="detail-value">${esc(lead.message)}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="detail-card">
-        <div class="detail-card__header"><h3>سجل النشاط</h3></div>
-        <div class="detail-card__body">
-          <div class="activity-list">${renderActivity(lead.activity)}</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Sidebar -->
-    <div class="detail-sidebar">
-      <div class="sidebar-card">
-        <h3>معلومات الطلب</h3>
-        <div class="meta-row">
-          <span class="detail-label">رقم الطلب</span>
-          <span class="detail-value">#${lead.id}</span>
-        </div>
-        <div class="meta-row">
-          <span class="detail-label">تاريخ الإنشاء</span>
-          <span class="detail-value">${formatDate(lead.created_at)}</span>
-        </div>
-        <div class="meta-row">
-          <span class="detail-label">آخر تحديث</span>
-          <span class="detail-value">${formatDate(lead.updated_at)}</span>
-        </div>
-      </div>
-
-      <div class="sidebar-card">
-        <h3>إدارة الطلب</h3>
-        <div class="field">
-          <label>الحالة</label>
-          <select id="detailStatus">
-            <option value="new" ${lead.status === 'new' ? 'selected' : ''}>جديد</option>
-            <option value="in_review" ${lead.status === 'in_review' ? 'selected' : ''}>قيد المراجعة</option>
-            <option value="contacted" ${lead.status === 'contacted' ? 'selected' : ''}>تم التواصل</option>
-            <option value="closed" ${lead.status === 'closed' ? 'selected' : ''}>مغلق</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>المسؤول عن المتابعة</label>
-          <input type="text" id="detailAssignee" placeholder="اسم أو بريد الموظف" value="${esc(lead.assigned_to || '')}">
-        </div>
-        <div class="field">
-          <label>ملاحظات</label>
-          <textarea id="detailNotes" placeholder="أضف ملاحظاتك هنا..." rows="4">${esc(lead.notes || '')}</textarea>
-        </div>
-        <button class="btn-save" id="saveBtn">حفظ التغييرات</button>
-      </div>
-
-      <div class="sidebar-card">
-        <button class="btn-delete" id="deleteBtn">حذف هذا الطلب</button>
-      </div>
-    </div>
-  `;
-
-  $('#saveBtn').addEventListener('click', () => saveLead(lead));
-  $('#deleteBtn').addEventListener('click', () => deleteLead(lead.id));
-  document.querySelectorAll('.copy-btn[data-copy]').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const text = btn.getAttribute('data-copy') || '';
-      const label = btn.getAttribute('data-label') || 'القيمة';
-      const ok = await copyToClipboard(text);
-      btn.classList.toggle('is-copied', ok);
-      setTimeout(() => { btn.classList.remove('is-copied'); }, 420);
-      if (!ok) alert(`تعذر نسخ ${label}`);
-    });
-  });
+function updateBulkBar() {
+  const count = tableState.selected.size;
+  $('#bulkBar').hidden = count === 0;
+  $('#bulkCount').textContent = `${count} محدد`;
 }
 
-async function saveLead(prevLead) {
+function clearSelection() {
+  tableState.selected.clear();
+  $$('.row-select').forEach(cb => { cb.checked = false; });
+  $('#selectAllCheckbox').checked = false;
+  updateBulkBar();
+}
+
+async function bulkAssign() {
+  const assignee = $('#bulkAssignee').value.trim();
+  if (!assignee || tableState.selected.size === 0) return;
   const sb = getSupabase();
-  const btn = $('#saveBtn');
+  const ids = Array.from(tableState.selected);
+  const btn = $('#bulkAssignBtn');
   btn.disabled = true;
-  btn.textContent = 'جارٍ الحفظ...';
-
-  const newStatus = $('#detailStatus').value;
-  const newAssignee = $('#detailAssignee').value.trim();
-  const newNotes = $('#detailNotes').value;
-
-  const activity = Array.isArray(prevLead.activity) ? prevLead.activity.slice() : [];
-  const now = new Date().toISOString();
-  if (newStatus !== prevLead.status) {
-    activity.push({ at: now, text: `تغيير الحالة إلى «${statusLabels[newStatus] || newStatus}»` });
-  }
-  if (newAssignee !== (prevLead.assigned_to || '')) {
-    activity.push({ at: now, text: newAssignee ? `تم إسناد الطلب إلى ${newAssignee}` : 'تمت إزالة المسؤول عن المتابعة' });
-  }
-  if (newNotes !== (prevLead.notes || '')) {
-    activity.push({ at: now, text: 'تم تحديث الملاحظات' });
-  }
-
   try {
-    const { data: updated, error } = await sb
-      .from('leads')
-      .update({
-        status: newStatus,
-        assigned_to: newAssignee || null,
-        notes: newNotes,
-        activity,
-        updated_at: now
-      })
-      .eq('id', prevLead.id)
-      .select('*')
-      .single();
+    const { error } = await sb.from('leads').update({ assigned_to: assignee, updated_at: new Date().toISOString() }).in('id', ids);
     if (error) throw error;
-    await logAudit('update', 'lead', prevLead.id,
-      { status: prevLead.status, assigned_to: prevLead.assigned_to, notes: prevLead.notes },
-      { status: newStatus, assigned_to: newAssignee || null, notes: newNotes });
-    renderDetail(updated);
+    await sb.from('lead_activities').insert(ids.map(id => ({ lead_id: id, type: 'assigned', title: `تم الإسناد الجماعي إلى ${assignee}` })));
+    await logAudit('bulk_update', 'lead', null, null, { ids, assigned_to: assignee });
+    clearSelection();
+    $('#bulkAssignee').value = '';
+    loadLeads();
   } catch {
-    alert('حدث خطأ أثناء الحفظ');
+    alert('تعذر تنفيذ الإسناد الجماعي');
   }
-
   btn.disabled = false;
-  btn.textContent = 'حفظ التغييرات';
 }
 
-async function deleteLead(id) {
-  if (!confirm('هل أنت متأكد من حذف هذا الطلب؟')) return;
-
+async function bulkChangeStage() {
+  const stage = $('#bulkStage').value;
+  if (tableState.selected.size === 0) return;
+  const sb = getSupabase();
+  const ids = Array.from(tableState.selected);
+  const btn = $('#bulkStageBtn');
+  btn.disabled = true;
   try {
-    const sb = getSupabase();
-    const { error } = await sb.from('leads').delete().eq('id', id);
+    const now = new Date().toISOString();
+    const { error } = await sb.from('leads').update({ sales_stage: stage, last_interaction_date: now, updated_at: now }).in('id', ids);
     if (error) throw error;
-    await logAudit('delete', 'lead', id);
-    showPage('listPage');
-    await loadLeads();
+    await sb.from('lead_activities').insert(ids.map(id => ({ lead_id: id, type: 'stage_changed', title: `تغيير جماعي للمرحلة إلى «${salesStageLabels[stage] || stage}»` })));
+    await logAudit('bulk_update', 'lead', null, null, { ids, sales_stage: stage });
+    clearSelection();
+    loadLeads();
   } catch {
-    alert('تعذر الحذف');
+    alert('تعذر تغيير المرحلة جماعياً');
   }
+  btn.disabled = false;
 }
+
+/* ---------- Export ---------- */
 
 export async function handleExport() {
   try {
     const sb = getSupabase();
-    const status = $('#statusFilter').value;
+    const stage = $('#statusFilter').value;
     let q = sb
       .from('leads')
       .select('*')
+      .is('deleted_at', null)
       .order('created_at', { ascending: false })
       .limit(5000);
-    if (status) q = q.eq('status', status);
+    if (stage) q = q.eq('sales_stage', stage);
     const { data, error } = await q;
     if (error) throw error;
 
     let csv = '\uFEFF';
-    csv += 'ID,الاسم,المسمى الوظيفي,الشركة,الخدمة المطلوبة,البريد الإلكتروني,الهاتف,الرسالة,المسؤول,الحالة,ملاحظات,تاريخ الإنشاء\n';
+    csv += 'رقم العميل المحتمل,الاسم,المسمى الوظيفي,الشركة,الخدمة المطلوبة,البريد الإلكتروني,الهاتف,الرسالة,المسؤول,المرحلة,الأولوية,القيمة التقديرية,المصدر,تاريخ المتابعة القادمة,الوسوم,ملاحظات,تاريخ الإنشاء\n';
     for (const l of (data || [])) {
       const escCsv = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
       csv += [
-        l.id,
+        escCsv(l.lead_number),
         escCsv(l.name),
         escCsv(l.job_title),
         escCsv(l.company),
@@ -310,7 +229,12 @@ export async function handleExport() {
         escCsv(l.phone),
         escCsv(l.message),
         escCsv(l.assigned_to),
-        l.status,
+        salesStageLabels[l.sales_stage] || l.sales_stage,
+        l.priority,
+        l.estimated_value ?? '',
+        l.source,
+        l.next_follow_up_date ?? '',
+        escCsv((l.tags || []).join('; ')),
         escCsv(l.notes),
         l.created_at
       ].join(',') + '\n';
@@ -328,4 +252,47 @@ export async function handleExport() {
   } catch {
     alert('تعذر التصدير');
   }
+}
+
+/* ---------- Event binding (called once from main.js) ---------- */
+
+export function bindLeadsEvents() {
+  initLeadsViewToggle();
+
+  $('#searchInput').addEventListener('input', () => {
+    clearTimeout(state.debounceTimer);
+    state.debounceTimer = setTimeout(() => { tableState.page = 0; loadLeads(); }, 300);
+  });
+  $('#statusFilter').addEventListener('change', () => { tableState.page = 0; loadLeads(); });
+  $('#sortSelect').addEventListener('change', () => { tableState.page = 0; loadLeads(); });
+  $('#exportBtn').addEventListener('click', handleExport);
+
+  $('#prevPageBtn').addEventListener('click', () => { if (tableState.page > 0) { tableState.page -= 1; loadLeads(); } });
+  $('#nextPageBtn').addEventListener('click', () => { tableState.page += 1; loadLeads(); });
+
+  $('#chipOverdue').addEventListener('click', () => {
+    tableState.activeChip = tableState.activeChip === 'overdue' ? null : 'overdue';
+    $('#chipOverdue').classList.toggle('is-active', tableState.activeChip === 'overdue');
+    $('#chipToday').classList.remove('is-active');
+    tableState.page = 0;
+    loadLeads();
+  });
+  $('#chipToday').addEventListener('click', () => {
+    tableState.activeChip = tableState.activeChip === 'today' ? null : 'today';
+    $('#chipToday').classList.toggle('is-active', tableState.activeChip === 'today');
+    $('#chipOverdue').classList.remove('is-active');
+    tableState.page = 0;
+    loadLeads();
+  });
+
+  $('#selectAllCheckbox').addEventListener('change', (e) => {
+    if (e.target.checked) tableState.currentPageLeadIds.forEach(id => tableState.selected.add(id));
+    else tableState.currentPageLeadIds.forEach(id => tableState.selected.delete(id));
+    $$('.row-select').forEach(cb => { cb.checked = e.target.checked; });
+    updateBulkBar();
+  });
+
+  $('#bulkAssignBtn').addEventListener('click', bulkAssign);
+  $('#bulkStageBtn').addEventListener('click', bulkChangeStage);
+  $('#bulkClearBtn').addEventListener('click', clearSelection);
 }
