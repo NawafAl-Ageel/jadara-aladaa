@@ -206,7 +206,7 @@ function renderSectionConfig(section) {
     return `
       <div class="ai-section-header">
         ${badge}
-        <button type="button" class="btn-back" data-generate-ai="${section.id}">✨ توليد بالذكاء الاصطناعي</button>
+        <button type="button" class="btn-back" data-generate-ai="${section.id}">Automate</button>
       </div>
       <textarea class="inline-textarea" rows="3" data-config-body="${section.id}" placeholder="اكتب المحتوى هنا...">${esc(section.config?.body || '')}</textarea>
     `;
@@ -280,7 +280,7 @@ async function generateInsightForSection(sectionId, btn) {
   if (!section || !editorState.dataset) return;
   const originalLabel = btn.textContent;
   btn.disabled = true;
-  btn.textContent = 'جارٍ التوليد...';
+  btn.textContent = 'Automating...';
   try {
     const body = await generateInsight(editorState.deliverable, section, editorState.dataset.rows);
     // Patch the existing textarea/badge in place instead of re-rendering the
