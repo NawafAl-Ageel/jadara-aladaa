@@ -12,7 +12,9 @@ import { loadLeadsPage, bindLeadsEvents } from './modules/leads.js';
 import { loadClients, bindClientsEvents } from './modules/clients.js';
 import { loadProjects, bindProjectsEvents } from './modules/projects.js';
 import { loadProposals, bindProposalsEvents } from './modules/proposals.js';
-import { bindPrintOverlay } from './modules/proposal-print.js';
+import { bindPrintOverlay } from './modules/print-overlay.js';
+import { loadStudioList, bindStudioEvents } from './modules/studio/studio-list.js';
+import { bindWizardEvents } from './modules/studio/studio-wizard.js';
 import { loadContent, openLogoModal } from './modules/content.js';
 import { loadTeam } from './modules/team.js';
 import { loadIntegrations } from './modules/integrations.js';
@@ -23,6 +25,7 @@ registerPageLoader('listPage', loadLeadsPage);
 registerPageLoader('clientsPage', loadClients);
 registerPageLoader('projectsPage', loadProjects);
 registerPageLoader('proposalsPage', loadProposals);
+registerPageLoader('studioPage', loadStudioList);
 registerPageLoader('contentPage', loadContent);
 registerPageLoader('teamPage', loadTeam);
 registerPageLoader('integrationsPage', loadIntegrations);
@@ -37,11 +40,14 @@ function bindEvents() {
   $('#loginForm').addEventListener('submit', handleLogin);
   $('#logoutBtn').addEventListener('click', handleLogout);
   $('#backBtn').addEventListener('click', () => showPage('listPage'));
+  $('#studioBackBtn').addEventListener('click', () => showPage('studioPage'));
 
   bindLeadsEvents();
   bindClientsEvents();
   bindProjectsEvents();
   bindProposalsEvents();
+  bindStudioEvents();
+  bindWizardEvents();
   bindPrintOverlay();
   bindNavEvents();
 

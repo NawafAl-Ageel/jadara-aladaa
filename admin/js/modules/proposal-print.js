@@ -1,11 +1,9 @@
-import { $, esc, formatDate } from './dom.js';
+import { esc, formatDate } from './dom.js';
+import { setPrintContent, showPrintOverlay } from './print-overlay.js';
 
-/* Print-to-PDF via the browser's native print dialog (@media print in
-   admin.css hides everything except this overlay) — no PDF library, no
-   server render, per the architecture decision in
-   docs/consulting-platform-plan.md §2.5. A small local status-label map
-   avoids importing from proposals.js, which imports this module — keeps
-   the dependency graph a one-way DAG instead of a cycle. */
+/* Proposal-specific print template. A small local status-label map avoids
+   importing from proposals.js, which imports this module — keeps the
+   dependency graph a one-way DAG instead of a cycle. */
 const statusLabels = {
   draft: 'مسودة', internal_review: 'مراجعة داخلية', sent: 'مُرسل',
   viewed: 'تمت المشاهدة', accepted: 'مقبول', rejected: 'مرفوض', expired: 'منتهي'
@@ -19,7 +17,7 @@ export function openProposalPrint(proposal, items, totals) {
   const targetName = proposal.clients?.name || proposal.leads?.company || proposal.leads?.name || '';
   const lineItems = items.filter(it => it.service_key && it.service_key.trim());
 
-  $('#printContent').innerHTML = `
+  setPrintContent(`
     <div class="print-doc">
       <header class="print-doc__header">
         <img src="assets/jadara-logo.png" alt="جدارة الأداء" class="print-doc__logo">
@@ -69,12 +67,7 @@ export function openProposalPrint(proposal, items, totals) {
 
       <footer class="print-doc__footer">جدارة الأداء للاستشارات · jadara-aladaa.sa</footer>
     </div>
-  `;
+  `);
 
-  $('#printOverlay').classList.add('is-visible');
-}
-
-export function bindPrintOverlay() {
-  $('#printCloseBtn').addEventListener('click', () => $('#printOverlay').classList.remove('is-visible'));
-  $('#printNowBtn').addEventListener('click', () => window.print());
+  showPrintOverlay();
 }

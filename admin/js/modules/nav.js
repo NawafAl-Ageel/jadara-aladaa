@@ -13,6 +13,8 @@ export const pageTitles = {
   proposalsPage: 'العروض',
   proposalDetailPage: 'تفاصيل العرض',
   studioPage: 'استوديو الاستشارات',
+  studioWizardPage: 'تقرير جديد',
+  studioEditorPage: 'تحرير التقرير',
   contentPage: 'محتوى الموقع',
   reportsPage: 'التقارير',
   teamPage: 'الفريق والصلاحيات',

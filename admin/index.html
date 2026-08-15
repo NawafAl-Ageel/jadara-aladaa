@@ -387,10 +387,59 @@
           <div class="detail-page" id="proposalDetailContent"></div>
         </section>
 
-        <!-- ===== CONSULTING STUDIO PAGE (placeholder — Phase 5) ===== -->
+        <!-- ===== CONSULTING STUDIO — DELIVERABLES LIST ===== -->
         <section id="studioPage" class="page">
-          <div class="toolbar"><div class="toolbar__start"><h2 class="toolbar__title">استوديو الاستشارات</h2></div></div>
-          <div class="empty-state">استوديو الاستشارات قيد الإنشاء — أداة لإنشاء تقارير تفاعلية للعملاء (تحليل السوق وخريطة الفرص) بدون تكرار الطلبات على ChatGPT. قادم في المرحلة القادمة من تطوير لوحة الإدارة.</div>
+          <div class="toolbar">
+            <div class="toolbar__start"><h2 class="toolbar__title">استوديو الاستشارات</h2></div>
+            <div class="toolbar__end">
+              <input type="search" id="studioSearchInput" class="toolbar__search" placeholder="بحث باسم التقرير...">
+              <select id="studioStatusFilter" class="toolbar__select">
+                <option value="">جميع الحالات</option>
+                <option value="draft">مسودة</option>
+                <option value="in_review">قيد المراجعة</option>
+                <option value="approved">معتمد</option>
+                <option value="published">منشور</option>
+                <option value="archived">مؤرشف</option>
+              </select>
+              <button id="newDeliverableBtn" class="btn-export">+ تقرير جديد</button>
+            </div>
+          </div>
+          <div class="table-section">
+            <div class="table-wrap">
+              <table class="table" id="studioTable">
+                <thead><tr><th>الاسم</th><th>العميل</th><th>القالب</th><th>الحالة</th><th>المالك</th><th>آخر تحديث</th><th></th></tr></thead>
+                <tbody id="studioBody"></tbody>
+              </table>
+            </div>
+            <p id="studioEmptyState" class="empty-state" style="display:none">لا توجد تقارير بعد</p>
+            <div class="pagination" id="studioPagination">
+              <button type="button" class="btn-back" id="studioPrevPageBtn">السابق</button>
+              <span id="studioPageIndicator" class="pagination__indicator"></span>
+              <button type="button" class="btn-back" id="studioNextPageBtn">التالي</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== CONSULTING STUDIO — CREATION WIZARD ===== -->
+        <section id="studioWizardPage" class="page">
+          <div class="wizard-header">
+            <span id="wizardStepIndicator" class="wizard-header__step"></span>
+            <button type="button" class="btn-back" id="wizardCancelBtn">إلغاء</button>
+          </div>
+          <div id="wizardContent"></div>
+          <div class="wizard-footer">
+            <button type="button" class="btn-back" id="wizardBackBtn">السابق</button>
+            <button type="button" class="btn-save" id="wizardNextBtn">التالي</button>
+          </div>
+        </section>
+
+        <!-- ===== CONSULTING STUDIO — EDITOR ===== -->
+        <section id="studioEditorPage" class="page">
+          <button class="btn-back" id="studioBackBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            رجوع لقائمة التقارير
+          </button>
+          <div class="detail-page" id="studioEditorContent"></div>
         </section>
 
         <!-- ===== CONTENT (CMS) PAGE ===== -->
@@ -508,6 +557,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script type="module" src="js/main.js"></script>
 </body>
 </html>

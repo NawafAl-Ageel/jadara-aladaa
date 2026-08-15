@@ -449,6 +449,12 @@ input, select, textarea { font-family: var(--font); }
 .badge--proposal-rejected { background: #fee2e2; color: #991b1b; }
 .badge--proposal-expired { background: #f1f2f4; color: #9ca3af; }
 
+.badge--studio-draft { background: #f1f2f4; color: #4b5563; }
+.badge--studio-in_review { background: #fef3c7; color: #92400e; }
+.badge--studio-approved { background: #e0e7ff; color: #3730a3; }
+.badge--studio-published { background: #dcfce7; color: #166534; }
+.badge--studio-archived { background: #f1f2f4; color: #9ca3af; }
+
 /* ============================================
    PROPOSAL TOTALS
    ============================================ */
@@ -947,4 +953,89 @@ input, select, textarea { font-family: var(--font); }
   .print-overlay__toolbar { display: none !important; }
   .print-overlay__page { max-width: none; margin: 0; }
   .print-doc { box-shadow: none; padding: 0; border-radius: 0; }
+}
+
+/* ============================================
+   CONSULTING STUDIO — WIZARD
+   ============================================ */
+
+.wizard-header {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px;
+}
+.wizard-header__step { font-size: 0.85rem; font-weight: 700; color: var(--accent); }
+
+.wizard-footer {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 20px;
+  max-width: 900px;
+}
+.wizard-footer .btn-save { min-width: 180px; }
+
+.template-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+.template-card {
+  background: var(--bg-card); border: 2px solid var(--border); border-radius: var(--radius);
+  padding: 18px; box-shadow: var(--shadow);
+}
+.template-card h3 { font-size: 0.9rem; font-weight: 700; margin-bottom: 6px; }
+.template-card p { font-size: 0.78rem; color: var(--text-muted); }
+.template-card--selected { border-color: var(--accent); background: #eef4fb; }
+.template-card--disabled { opacity: 0.5; }
+
+/* ============================================
+   CONSULTING STUDIO — SECTION EDITOR
+   ============================================ */
+
+.section-row {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 12px; margin-bottom: 8px;
+  background: #fafbfc; border: 1px solid var(--border); border-radius: 8px; cursor: grab;
+}
+.section-row.is-dragging { opacity: 0.4; }
+.section-row__drag { color: var(--text-muted); font-size: 0.9rem; cursor: grab; }
+.section-row__title { flex: 1; min-width: 160px; }
+.section-row__kind {
+  font-size: 0.7rem; font-weight: 600; color: var(--text-muted); background: #eef1f4;
+  padding: 2px 8px; border-radius: 4px; white-space: nowrap;
+}
+.section-row__config {
+  flex-basis: 100%; padding-top: 10px; margin-top: 6px; border-top: 1px solid var(--border);
+}
+.config-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 0.8rem; }
+.config-row label { color: var(--text-muted); }
+.config-row select { padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.78rem; }
+
+/* ============================================
+   CONSULTING STUDIO — CLIENT-FACING PREVIEW
+   (rendered inside the shared #printOverlay/#printContent)
+   ============================================ */
+
+.studio-doc { --studio-brand: var(--accent); }
+.studio-cover { text-align: center; padding: 40px 0 32px; border-bottom: 2px solid var(--studio-brand); margin-bottom: 28px; }
+.studio-cover__logo { height: 56px; margin-bottom: 16px; }
+.studio-cover h1 { font-size: 1.6rem; color: var(--text); margin-bottom: 8px; }
+.studio-cover__client { font-size: 1rem; color: var(--studio-brand); font-weight: 700; }
+.studio-cover__period { font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; }
+
+.studio-section { margin-bottom: 28px; }
+.studio-section h2 { font-size: 1.05rem; color: var(--studio-brand); border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 14px; }
+.studio-section__body { font-size: 0.9rem; line-height: 1.9; color: var(--text); }
+.studio-section__hint { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 10px; }
+
+.studio-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; }
+.studio-metric-card {
+  background: #fafbfc; border: 1px solid var(--border); border-radius: 10px; padding: 18px;
+  display: flex; flex-direction: column; gap: 4px; text-align: center;
+}
+.studio-metric-card__value { font-size: 1.5rem; font-weight: 700; color: var(--studio-brand); }
+.studio-metric-card__label { font-size: 0.78rem; color: var(--text-muted); }
+
+.studio-chart-wrap { max-width: 640px; margin: 0 auto; }
+
+.studio-ranked-list { list-style: none; counter-reset: rank; display: flex; flex-direction: column; gap: 6px; }
+.studio-ranked-list li {
+  counter-increment: rank; display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 14px; background: #fafbfc; border-radius: 8px; font-size: 0.86rem;
+}
+.studio-ranked-list li::before {
+  content: counter(rank); display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border-radius: 50%; background: var(--studio-brand); color: #fff;
+  font-size: 0.7rem; font-weight: 700; margin-inline-end: 10px;
 }

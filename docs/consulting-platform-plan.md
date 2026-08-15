@@ -1,6 +1,6 @@
 # Jadara Consulting Platform — Implementation Plan
 
-Status: **Phase 3 (Proposals) complete, 2026-08-14 — see §5 for phase-by-phase status**
+Status: **Phase 4 (Consulting Studio MVP) complete, 2026-08-14 — see §5 for phase-by-phase status**
 Scope source: CEO brief "next phase" (CRM + Consulting Studio), 2026-08-14.
 
 ## 1. Audit summary
@@ -89,7 +89,7 @@ Each phase ships as a working, deployable increment — not one giant PR. I'll p
 | **1 — Leads/Pipeline** ✅ | Extended lead model + migration, Kanban + table views, lead detail with full activity timeline, follow-up due/overdue surfacing, convert-to-client, lost reasons, dedupe-on-convert guard | Phase 0 |
 | **2 — Clients & Projects** ✅ | Client profiles + contacts, project list/detail, milestones, simple tasks, project deliverable checklist, document uploads (Storage bucket) | Phase 1 |
 | **3 — Proposals** ✅ | Proposal builder from a lead, line items + VAT/discount totals, print-to-PDF view, accept → auto-create project | Phase 2 |
-| **4 — Consulting Studio MVP (no AI)** | Deliverable creation wizard, Market Analysis template, CSV/Excel upload + column mapping + validation, section enable/reorder, metric/chart config, data-driven client-facing preview (RTL/LTR, branding), draft/version save | Phase 0 (independent of 1–3) |
+| **4 — Consulting Studio MVP (no AI)** ✅ | Deliverable creation wizard, Market Analysis template, CSV/Excel upload + column mapping + validation, section enable/reorder, metric/chart config, data-driven client-facing preview (RTL/LTR, branding), draft/version save | Phase 0 (independent of 1–3) |
 | **5 — AI insights** | Edge Function + Anthropic adapter, structured JSON insight generation per section, editable/regenerate UI, "AI-generated" badge, source-data linkage, graceful fallback when no key configured | Phase 4 |
 | **6 — Publish workflow** | Draft→Review→Approved→Published states, private slug link, optional password gate via Edge Function, public/private visibility, archive | Phase 4–5 |
 | **7 — Dashboard, Reports, Notifications, Integrations settings** | Rebuilt dashboard KPIs/charts across all modules, Reports area with CSV export, in-app notifications, Integrations cards (real "not configured" states, no fake connections), webhook automation drain | Phases 1–6 |
