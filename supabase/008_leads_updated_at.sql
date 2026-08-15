@@ -1,0 +1,14 @@
+-- Jadara Consulting Platform — fix: leads.updated_at was missing.
+-- Run in the Supabase SQL editor for project gjuzaafqfsvmxhumpokp, after 007_consulting_insights.sql.
+-- Safe to re-run. Additive only.
+--
+-- Every table that's ever edited after creation is supposed to carry
+-- updated_at (see docs/consulting-platform-plan.md §3) and the app code
+-- has always set it on lead updates (Kanban drag-drop, bulk assign, bulk
+-- stage change, the lead detail save form) — but the column itself was
+-- never added when 003_leads_pipeline.sql extended `leads`, since `leads`
+-- predates the tracked migrations. PostgREST rejects any update touching
+-- a column it doesn't recognize, so all four of those write paths were
+-- silently failing (surfaced to the user as "Could not find the
+-- 'updated_at' column of 'leads' in the schema cache").
+alter table leads add column if not exists updated_at timestamptz not null default now();
