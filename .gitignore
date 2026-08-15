@@ -6,6 +6,9 @@ Jadara_Project.zip
 .env
 .env.*
 !.env.example
+*.env
+**/keys.env
+.claude/
 
 # Dependencies
 node_modules/
