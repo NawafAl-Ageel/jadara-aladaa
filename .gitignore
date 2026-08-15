@@ -13,6 +13,10 @@ Jadara_Project.zip
 # Dependencies
 node_modules/
 
+# Supabase CLI local state
+supabase/.temp/
+supabase/.branches/
+
 # Databases
 *.db
 *.db-shm

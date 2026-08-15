@@ -1002,6 +1002,9 @@ input, select, textarea { font-family: var(--font); }
 .config-row label { color: var(--text-muted); }
 .config-row select { padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.78rem; }
 
+.ai-section-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.ai-section-header .btn-back { font-size: 0.75rem; padding: 4px 10px; }
+
 /* ============================================
    CONSULTING STUDIO — CLIENT-FACING PREVIEW
    (rendered inside the shared #printOverlay/#printContent)

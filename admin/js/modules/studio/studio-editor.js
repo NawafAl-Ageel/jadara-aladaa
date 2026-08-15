@@ -6,6 +6,7 @@ import { CANONICAL_FIELDS, canonicalFieldLabels, chartTypeLabels, aggregationLab
 import { parseFile, suggestColumnMap, applyColumnMap, distinctValues } from './dataset-parser.js';
 import { renderDeliverable, instantiateCharts } from './report-render.js';
 import { setPrintContent, showPrintOverlay } from '../print-overlay.js';
+import { generateInsight } from './ai-insights.js';
 
 const statusLabels = {
   draft: 'مسودة', in_review: 'قيد المراجعة', approved: 'معتمد', published: 'منشور', archived: 'مؤرشف'
@@ -196,7 +197,19 @@ function mappedFields() {
 function renderSectionConfig(section) {
   const fields = mappedFields();
   if (section.kind === 'narrative') {
-    return `<textarea class="inline-textarea" rows="3" data-config-body="${section.id}" placeholder="اكتب المحتوى هنا...">${esc(section.config?.body || '')}</textarea>`;
+    const aiStatus = section.config?.ai_status;
+    const badge = aiStatus === 'ai_generated'
+      ? '<span class="badge badge--stage-won">تم التوليد بالذكاء الاصطناعي</span>'
+      : aiStatus === 'edited'
+        ? '<span class="badge badge--project-on_hold">معدَّل يدوياً بعد التوليد</span>'
+        : '';
+    return `
+      <div class="ai-section-header">
+        ${badge}
+        <button type="button" class="btn-back" data-generate-ai="${section.id}">✨ توليد بالذكاء الاصطناعي</button>
+      </div>
+      <textarea class="inline-textarea" rows="3" data-config-body="${section.id}" placeholder="اكتب المحتوى هنا...">${esc(section.config?.body || '')}</textarea>
+    `;
   }
   if (section.section_key === 'key_metrics') {
     return Object.entries(METRIC_PRESET_LABELS).map(([key, label]) => `
@@ -240,6 +253,10 @@ function bindSectionsList() {
     });
   });
 
+  list.querySelectorAll('[data-generate-ai]').forEach(btn => {
+    btn.addEventListener('click', () => generateInsightForSection(Number(btn.dataset.generateAi), btn));
+  });
+
   list.querySelectorAll('[draggable="true"]').forEach(row => {
     row.addEventListener('dragstart', () => { draggedSectionId = Number(row.dataset.sectionId); row.classList.add('is-dragging'); });
     row.addEventListener('dragend', () => row.classList.remove('is-dragging'));
@@ -258,6 +275,30 @@ function bindSectionsList() {
   });
 }
 
+async function generateInsightForSection(sectionId, btn) {
+  const section = editorState.sections.find(s => s.id === sectionId);
+  if (!section || !editorState.dataset) return;
+  const originalLabel = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'جارٍ التوليد...';
+  try {
+    const body = await generateInsight(editorState.deliverable, section, editorState.dataset.rows);
+    // Patch the existing textarea/badge in place instead of re-rendering the
+    // section list — keeps every other row's DOM (and listeners) untouched.
+    const textarea = $(`[data-config-body="${sectionId}"]`);
+    if (textarea) textarea.value = body;
+    const header = btn.closest('.ai-section-header');
+    const badgeHtml = '<span class="badge badge--stage-won">تم التوليد بالذكاء الاصطناعي</span>';
+    const existingBadge = header?.querySelector('.badge');
+    if (existingBadge) existingBadge.outerHTML = badgeHtml;
+    else header?.insertAdjacentHTML('afterbegin', badgeHtml);
+  } catch (err) {
+    alert('تعذر التوليد: ' + (err?.message || String(err)));
+  }
+  btn.disabled = false;
+  btn.textContent = originalLabel;
+}
+
 function collectSectionUpdates() {
   const list = $('#sectionsList');
   return editorState.sections.map((s, i) => {
@@ -266,7 +307,13 @@ function collectSectionUpdates() {
     let config = s.config;
 
     const bodyEl = list.querySelector(`[data-config-body="${s.id}"]`);
-    if (bodyEl) config = { ...config, body: bodyEl.value };
+    if (bodyEl) {
+      const bodyChanged = bodyEl.value !== (config.body || '');
+      config = { ...config, body: bodyEl.value };
+      // Manual edits after an AI generation demote the status so the badge
+      // no longer claims the visible text is still the unedited AI output.
+      if (bodyChanged && config.ai_status === 'ai_generated') config = { ...config, ai_status: 'edited' };
+    }
 
     const metricEls = list.querySelectorAll(`[data-metric="${s.id}"]`);
     if (metricEls.length) config = { ...config, metrics: Array.from(metricEls).filter(el => el.checked).map(el => el.value) };
