@@ -112,16 +112,20 @@ No existing table is dropped or renamed. `leads` gains columns, keeps all curren
 
 ## 9. CEO weekly reveal schedule
 
-The CEO's team is currently idle, so per his request features are revealed to him one at a time (roughly weekly) rather than all at once, even though the underlying build already runs ahead of that cadence. This is a **display-only gate** — `admin/js/modules/feature-reveal.js` — not a security boundary; RLS access and internal app navigation (e.g. convert-lead-to-client) are unaffected. Locked sidebar tabs stay visible but greyed out with a "قريباً · المرحلة N" badge (same visual language as the Studio template picker's disabled cards) and don't respond to clicks.
+The CEO's team is currently idle, so per his request features are revealed to him one at a time (roughly weekly) rather than all at once, even though the underlying build already runs ahead of that cadence. This is a **display-only gate** — `admin/js/modules/feature-reveal.js` — not a security boundary; RLS access and internal app navigation (e.g. convert-lead-to-client) are unaffected. Locked sidebar tabs stay visible but greyed out with a "قريباً" badge (same visual language as the Studio template picker's disabled cards) and don't respond to clicks.
 
-Current schedule (`REVEAL_SCHEDULE` in that file):
+The sidebar itself is split into two groups by a "قوائم الأتمتة" divider: infrastructure tabs (Dashboard, site content, Reports, Team & Permissions, Integrations, Settings — predate/scaffold this build, never gated) above it, and every CRM/Studio automation tab below it, each carrying a permanent subtitle naming which of the CEO's 4 official business phases it automates (`أتمتة عامة` if it doesn't map to one specific phase). This subtitle is independent of reveal status — it shows whether the tab is locked or not.
 
-| Week/Phase | Tab(s) | Status |
+Business-phase mapping (subtitle text is static markup in `admin/index.html`, not config-driven):
+
+| Tab | Business phase subtitle | Reveal week (`REVEAL_SCHEDULE`) |
 |---|---|---|
-| 1 | Leads (`listPage`) | Revealed |
-| 2 | Clients & Projects (`clientsPage`, `projectsPage`) | Locked |
-| 3 | Proposals (`proposalsPage`) | Locked |
-| 4 | Consulting Studio (`studioPage`) | Locked |
-| 5 | AI insights (Automate button inside Studio — `AI_INSIGHTS_REVEALED`) | Locked |
+| Consulting Studio (`studioPage`) | دراسة نطاق العمل | 4 — locked |
+| Proposals (`proposalsPage`) | عرض فني وعرض مالي | 3 — locked |
+| Clients (`clientsPage`) | متابعة وإدارة المشروع ومراحله | 2 — locked |
+| Projects (`projectsPage`) | متابعة وإدارة المشروع ومراحله | 2 — locked |
+| Leads (`listPage`) | أتمتة عامة | 1 — **revealed** |
+| Accounting (`accountingPage`) — not built yet, no page/loader exists | أتمتة عامة | permanently locked until it's actually built |
+| AI insights (Automate button inside Studio — `AI_INSIGHTS_REVEALED`) | — (sub-feature of Studio, no separate subtitle) | locked |
 
-Dashboard, site content, Team & Permissions, Integrations, Reports, and Settings are **not** gated — they predate/scaffold this build rather than being their own reveal moment. To unlock the next item, flip its `revealed` flag (or `AI_INSIGHTS_REVEALED`) to `true` and push to `main`.
+To unlock the next item, flip its `revealed` flag (or `AI_INSIGHTS_REVEALED`) to `true` and push to `main`.

@@ -7,7 +7,7 @@ import { parseFile, suggestColumnMap, applyColumnMap, distinctValues } from './d
 import { renderDeliverable, instantiateCharts } from './report-render.js';
 import { setPrintContent, showPrintOverlay } from '../print-overlay.js';
 import { generateInsight } from './ai-insights.js';
-import { AI_INSIGHTS_REVEALED, AI_INSIGHTS_PHASE } from '../feature-reveal.js';
+import { AI_INSIGHTS_REVEALED } from '../feature-reveal.js';
 
 const statusLabels = {
   draft: 'مسودة', in_review: 'قيد المراجعة', approved: 'معتمد', published: 'منشور', archived: 'مؤرشف'
@@ -206,7 +206,7 @@ function renderSectionConfig(section) {
         : '';
     const aiControl = AI_INSIGHTS_REVEALED
       ? `<button type="button" class="btn-back" data-generate-ai="${section.id}">Automate</button>`
-      : `<span class="sidebar__lock-badge" style="color:var(--text-muted);background:#eef1f4">قريباً · المرحلة ${AI_INSIGHTS_PHASE}</span>`;
+      : `<span class="sidebar__lock-badge" style="color:var(--text-muted);background:#eef1f4">قريباً</span>`;
     return `
       <div class="ai-section-header">
         ${badge}

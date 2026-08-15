@@ -176,6 +176,29 @@ input, select, textarea { font-family: var(--font); }
   white-space: nowrap;
 }
 
+.sidebar__link-text { display: flex; flex-direction: column; gap: 1px; overflow: hidden; text-align: start; }
+.sidebar__link-title { font-size: 0.86rem; font-weight: 500; }
+.sidebar__link-phase {
+  font-size: 0.65rem;
+  font-weight: 400;
+  color: rgba(255,255,255,0.35);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sidebar__link.is-active .sidebar__link-phase { color: rgba(255,255,255,0.75); }
+
+.sidebar__divider {
+  display: flex;
+  align-items: center;
+  margin: 12px 12px 4px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.38);
+}
+
 .sidebar__footer {
   padding: 16px 20px 20px;
   border-top: 1px solid rgba(255,255,255,0.08);

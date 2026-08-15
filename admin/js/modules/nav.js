@@ -1,7 +1,7 @@
 import { $, $$ } from './dom.js';
 import { state } from './state.js';
 import { canSeeTab } from './permissions.js';
-import { isTabRevealed, tabPhase } from './feature-reveal.js';
+import { isTabRevealed } from './feature-reveal.js';
 
 export const pageTitles = {
   dashboardPage: 'لوحة المعلومات',
@@ -20,7 +20,8 @@ export const pageTitles = {
   reportsPage: 'التقارير',
   teamPage: 'الفريق والصلاحيات',
   integrationsPage: 'التكاملات',
-  settingsPage: 'الإعدادات'
+  settingsPage: 'الإعدادات',
+  accountingPage: 'نظام محاسبة'
 };
 
 // Domain modules register a loader for their page id instead of nav.js
@@ -61,7 +62,7 @@ export function applyRoleVisibility() {
 }
 
 // Locked tabs stay visible (not hidden) so the sidebar structure reads as
-// "more is coming," but are greyed out with a phase badge and don't
+// "more is coming," but are greyed out with a "قريباً" badge and don't
 // navigate on click.
 export function applyFeatureReveal() {
   $$('.sidebar__link').forEach(link => {
@@ -70,10 +71,7 @@ export function applyFeatureReveal() {
     link.classList.toggle('sidebar__link--locked', !revealed);
     const existingBadge = link.querySelector('.sidebar__lock-badge');
     if (!revealed) {
-      const phase = tabPhase(tab);
-      if (!existingBadge) {
-        link.insertAdjacentHTML('beforeend', `<span class="sidebar__lock-badge">قريباً${phase ? ` · المرحلة ${phase}` : ''}</span>`);
-      }
+      if (!existingBadge) link.insertAdjacentHTML('beforeend', `<span class="sidebar__lock-badge">قريباً</span>`);
     } else if (existingBadge) {
       existingBadge.remove();
     }
