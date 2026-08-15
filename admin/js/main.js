@@ -11,6 +11,8 @@ import { loadDashboard } from './modules/dashboard.js';
 import { loadLeadsPage, bindLeadsEvents } from './modules/leads.js';
 import { loadClients, bindClientsEvents } from './modules/clients.js';
 import { loadProjects, bindProjectsEvents } from './modules/projects.js';
+import { loadProposals, bindProposalsEvents } from './modules/proposals.js';
+import { bindPrintOverlay } from './modules/proposal-print.js';
 import { loadContent, openLogoModal } from './modules/content.js';
 import { loadTeam } from './modules/team.js';
 import { loadIntegrations } from './modules/integrations.js';
@@ -20,6 +22,7 @@ registerPageLoader('dashboardPage', loadDashboard);
 registerPageLoader('listPage', loadLeadsPage);
 registerPageLoader('clientsPage', loadClients);
 registerPageLoader('projectsPage', loadProjects);
+registerPageLoader('proposalsPage', loadProposals);
 registerPageLoader('contentPage', loadContent);
 registerPageLoader('teamPage', loadTeam);
 registerPageLoader('integrationsPage', loadIntegrations);
@@ -38,6 +41,8 @@ function bindEvents() {
   bindLeadsEvents();
   bindClientsEvents();
   bindProjectsEvents();
+  bindProposalsEvents();
+  bindPrintOverlay();
   bindNavEvents();
 
   $$('.content-tab').forEach(tab => {

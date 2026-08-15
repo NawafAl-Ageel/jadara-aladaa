@@ -11,6 +11,7 @@ export const pageTitles = {
   projectsPage: 'المشاريع',
   projectDetailPage: 'تفاصيل المشروع',
   proposalsPage: 'العروض',
+  proposalDetailPage: 'تفاصيل العرض',
   studioPage: 'استوديو الاستشارات',
   contentPage: 'محتوى الموقع',
   reportsPage: 'التقارير',

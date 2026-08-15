@@ -441,6 +441,28 @@ input, select, textarea { font-family: var(--font); }
 .badge--health-at_risk { background: #fef3c7; color: #92400e; }
 .badge--health-delayed { background: #fee2e2; color: #991b1b; }
 
+.badge--proposal-draft { background: #f1f2f4; color: #4b5563; }
+.badge--proposal-internal_review { background: #e0e7ff; color: #3730a3; }
+.badge--proposal-sent { background: #dbeafe; color: #1e40af; }
+.badge--proposal-viewed { background: #e0e7ff; color: #3730a3; }
+.badge--proposal-accepted { background: #dcfce7; color: #166534; }
+.badge--proposal-rejected { background: #fee2e2; color: #991b1b; }
+.badge--proposal-expired { background: #f1f2f4; color: #9ca3af; }
+
+/* ============================================
+   PROPOSAL TOTALS
+   ============================================ */
+
+.totals-block { max-width: 420px; margin-inline-start: auto; margin-top: 16px; }
+.totals-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+.totals-row span:first-child { color: var(--text-muted); }
+.totals-row__controls { display: flex; align-items: center; gap: 6px; }
+.totals-row__controls select, .totals-row__controls input {
+  padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.8rem;
+}
+.totals-row--total { border-bottom: none; padding-top: 12px; font-size: 1rem; }
+.totals-row--total span, .totals-row--total strong { color: var(--text); font-weight: 700; }
+
 /* ============================================
    CHECKLISTS (milestones / tasks / deliverables), CONTACTS, PROGRESS
    ============================================ */
@@ -875,4 +897,54 @@ input, select, textarea { font-family: var(--font); }
 @media (max-width: 480px) {
   .stats-row { grid-template-columns: 1fr; }
   .login__card { padding: 28px 20px; }
+}
+
+/* ============================================
+   PRINT / PDF OVERLAY (proposals)
+   ============================================ */
+
+.print-overlay {
+  display: none; position: fixed; inset: 0; z-index: 500; background: #f2f4f7; overflow-y: auto;
+}
+.print-overlay.is-visible { display: block; }
+
+.print-overlay__toolbar {
+  position: sticky; top: 0; z-index: 1; display: flex; justify-content: flex-end; gap: 10px;
+  padding: 14px 24px; background: var(--bg-card); border-bottom: 1px solid var(--border);
+}
+
+.print-overlay__page { max-width: 800px; margin: 24px auto 60px; }
+
+.print-doc {
+  background: #fff; border-radius: var(--radius); box-shadow: var(--shadow-lg); padding: 48px;
+}
+
+.print-doc__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; border-bottom: 2px solid var(--primary); padding-bottom: 20px; margin-bottom: 24px; }
+.print-doc__logo { height: 44px; }
+.print-doc__meta { text-align: end; font-size: 0.82rem; color: var(--text-muted); line-height: 1.8; }
+.print-doc__meta h1 { font-size: 1.05rem; color: var(--text); margin-bottom: 6px; }
+
+.print-doc__section { margin-bottom: 22px; }
+.print-doc__section h2 { font-size: 1.2rem; color: var(--text); margin-bottom: 6px; }
+.print-doc__section h3 { font-size: 0.92rem; color: var(--accent); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.03em; }
+.print-doc__section p { font-size: 0.9rem; line-height: 1.8; color: var(--text); }
+
+.print-doc__table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.print-doc__table th { text-align: start; padding: 8px 10px; background: #fafbfc; border-bottom: 2px solid var(--border); font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted); }
+.print-doc__table td { padding: 9px 10px; border-bottom: 1px solid #f2f3f5; }
+
+.print-doc__totals { max-width: 340px; margin-inline-start: auto; margin-top: 14px; }
+.print-doc__totals > div { display: flex; justify-content: space-between; padding: 6px 0; font-size: 0.85rem; border-bottom: 1px solid #f2f3f5; }
+.print-doc__totals span { color: var(--text-muted); }
+.print-doc__grand-total { border-top: 2px solid var(--primary); border-bottom: none !important; margin-top: 4px; padding-top: 10px !important; font-size: 1rem; font-weight: 700; }
+.print-doc__grand-total span { color: var(--text) !important; }
+
+.print-doc__footer { margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); text-align: center; font-size: 0.76rem; color: var(--text-muted); }
+
+@media print {
+  body > *:not(#printOverlay) { display: none !important; }
+  .print-overlay { position: static !important; background: #fff !important; overflow: visible !important; }
+  .print-overlay__toolbar { display: none !important; }
+  .print-overlay__page { max-width: none; margin: 0; }
+  .print-doc { box-shadow: none; padding: 0; border-radius: 0; }
 }

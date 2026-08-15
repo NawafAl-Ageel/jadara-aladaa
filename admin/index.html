@@ -341,10 +341,50 @@
           <div class="detail-page" id="projectDetailContent"></div>
         </section>
 
-        <!-- ===== PROPOSALS PAGE (placeholder — Phase 4) ===== -->
+        <!-- ===== PROPOSALS PAGE ===== -->
         <section id="proposalsPage" class="page">
-          <div class="toolbar"><div class="toolbar__start"><h2 class="toolbar__title">العروض</h2></div></div>
-          <div class="empty-state">وحدة إعداد العروض قيد الإنشاء — قادمة في المرحلة القادمة من تطوير لوحة الإدارة.</div>
+          <div class="toolbar">
+            <div class="toolbar__start"><h2 class="toolbar__title">العروض</h2></div>
+            <div class="toolbar__end">
+              <input type="search" id="proposalSearchInput" class="toolbar__search" placeholder="بحث بعنوان المشروع...">
+              <select id="proposalStatusFilter" class="toolbar__select">
+                <option value="">جميع الحالات</option>
+                <option value="draft">مسودة</option>
+                <option value="internal_review">مراجعة داخلية</option>
+                <option value="sent">مُرسل</option>
+                <option value="viewed">تمت المشاهدة</option>
+                <option value="accepted">مقبول</option>
+                <option value="rejected">مرفوض</option>
+                <option value="expired">منتهي</option>
+              </select>
+              <button id="addProposalBtn" class="btn-export">+ عرض جديد</button>
+            </div>
+          </div>
+          <div class="table-section">
+            <div class="table-wrap">
+              <table class="table" id="proposalsTable">
+                <thead>
+                  <tr><th>#</th><th>عنوان المشروع</th><th>الجهة</th><th>الحالة</th><th>الإجمالي</th><th>تاريخ الإنشاء</th></tr>
+                </thead>
+                <tbody id="proposalsBody"></tbody>
+              </table>
+            </div>
+            <p id="proposalsEmptyState" class="empty-state" style="display:none">لا توجد عروض بعد</p>
+            <div class="pagination" id="proposalsPagination">
+              <button type="button" class="btn-back" id="proposalsPrevPageBtn">السابق</button>
+              <span id="proposalsPageIndicator" class="pagination__indicator"></span>
+              <button type="button" class="btn-back" id="proposalsNextPageBtn">التالي</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== PROPOSAL DETAIL PAGE ===== -->
+        <section id="proposalDetailPage" class="page">
+          <button class="btn-back" id="proposalBackBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            رجوع لقائمة العروض
+          </button>
+          <div class="detail-page" id="proposalDetailContent"></div>
         </section>
 
         <!-- ===== CONSULTING STUDIO PAGE (placeholder — Phase 5) ===== -->
@@ -454,6 +494,16 @@
   <!-- ===== Generic Modal (logos / confirm) ===== -->
   <div id="modalOverlay" class="modal-overlay">
     <div class="modal" id="modalBox"></div>
+  </div>
+
+  <!-- ===== Print / PDF overlay (proposals). Body-level sibling so the
+       @media print rule in admin.css can hide everything else. ===== -->
+  <div id="printOverlay" class="print-overlay">
+    <div class="print-overlay__toolbar">
+      <button type="button" id="printCloseBtn" class="btn-back">إغلاق</button>
+      <button type="button" id="printNowBtn" class="btn-save">طباعة / حفظ PDF</button>
+    </div>
+    <div class="print-overlay__page" id="printContent"></div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

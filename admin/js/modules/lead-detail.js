@@ -6,6 +6,7 @@ import { SALES_STAGES, salesStageLabels, priorityLabels, sourceLabels } from './
 import { fetchLeadActivities, logLeadActivity, activityTypeLabel, LOGGABLE_ACTIVITY_TYPES } from './lead-activities.js';
 import { convertLeadToClient } from './clients.js';
 import { logClientActivity } from './client-activities.js';
+import { openAddProposalModal } from './proposals.js';
 
 export async function openLeadDetail(id) {
   showPage('detailPage');
@@ -211,6 +212,11 @@ function renderDetail(lead, client, activities) {
       </div>
 
       <div class="sidebar-card">
+        <h3>العروض</h3>
+        <button class="btn-back" id="createProposalBtn" style="width:100%">إنشاء عرض</button>
+      </div>
+
+      <div class="sidebar-card">
         <h3>التحويل</h3>
         ${alreadyConverted
           ? `<p class="content-hint">تم التحويل إلى عميل: <strong>${esc(client?.name || '')}</strong></p>`
@@ -236,6 +242,7 @@ function renderDetail(lead, client, activities) {
   $('#deleteBtn').addEventListener('click', () => deleteLead(lead.id));
   $('#activityForm').addEventListener('submit', (e) => addActivity(e, lead.id));
 
+  $('#createProposalBtn').addEventListener('click', () => openAddProposalModal(lead.id));
   $('#convertClientBtn')?.addEventListener('click', () => handleConvertToClient(lead));
   $('#convertProjectBtn')?.addEventListener('click', () => handleConvertToProject(lead, client));
 
