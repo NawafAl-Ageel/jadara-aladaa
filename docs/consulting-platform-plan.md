@@ -109,3 +109,19 @@ No PPTX export, no full ERP/accounting, no Jira-style task engine, no multi-tena
 ## 8. Non-destructive guarantee
 
 No existing table is dropped or renamed. `leads` gains columns, keeps all current ones. Current admin URLs/behavior keep working during the ES-module refactor (Phase 0 has no user-visible change). Amplify config and both apps' deploy path are untouched throughout.
+
+## 9. CEO weekly reveal schedule
+
+The CEO's team is currently idle, so per his request features are revealed to him one at a time (roughly weekly) rather than all at once, even though the underlying build already runs ahead of that cadence. This is a **display-only gate** — `admin/js/modules/feature-reveal.js` — not a security boundary; RLS access and internal app navigation (e.g. convert-lead-to-client) are unaffected. Locked sidebar tabs stay visible but greyed out with a "قريباً · المرحلة N" badge (same visual language as the Studio template picker's disabled cards) and don't respond to clicks.
+
+Current schedule (`REVEAL_SCHEDULE` in that file):
+
+| Week/Phase | Tab(s) | Status |
+|---|---|---|
+| 1 | Leads (`listPage`) | Revealed |
+| 2 | Clients & Projects (`clientsPage`, `projectsPage`) | Locked |
+| 3 | Proposals (`proposalsPage`) | Locked |
+| 4 | Consulting Studio (`studioPage`) | Locked |
+| 5 | AI insights (Automate button inside Studio — `AI_INSIGHTS_REVEALED`) | Locked |
+
+Dashboard, site content, Team & Permissions, Integrations, Reports, and Settings are **not** gated — they predate/scaffold this build rather than being their own reveal moment. To unlock the next item, flip its `revealed` flag (or `AI_INSIGHTS_REVEALED`) to `true` and push to `main`.

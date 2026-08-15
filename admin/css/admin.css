@@ -163,6 +163,19 @@ input, select, textarea { font-family: var(--font); }
   color: #fff;
 }
 
+.sidebar__link--locked { opacity: 0.45; cursor: default; }
+.sidebar__link--locked:hover { background: transparent; color: rgba(255,255,255,0.55); }
+.sidebar__lock-badge {
+  margin-inline-start: auto;
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.55);
+  background: rgba(255,255,255,0.08);
+  padding: 2px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
 .sidebar__footer {
   padding: 16px 20px 20px;
   border-top: 1px solid rgba(255,255,255,0.08);

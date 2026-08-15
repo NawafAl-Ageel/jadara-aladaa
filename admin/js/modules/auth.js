@@ -1,7 +1,7 @@
 import { $ } from './dom.js';
 import { getSupabase } from './supabase-client.js';
 import { state } from './state.js';
-import { showView, showPage, applyRoleVisibility } from './nav.js';
+import { showView, showPage, applyRoleVisibility, applyFeatureReveal } from './nav.js';
 
 export async function loadCurrentProfile() {
   const sb = getSupabase();
@@ -41,6 +41,7 @@ export async function enterDashboard(username) {
   await loadCurrentProfile();
   showView('adminView');
   applyRoleVisibility();
+  applyFeatureReveal();
   showPage('dashboardPage');
   $('#adminUsername').textContent = state.currentProfile?.full_name || username;
 }

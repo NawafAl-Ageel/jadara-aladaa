@@ -1,6 +1,7 @@
 import { $, $$ } from './dom.js';
 import { state } from './state.js';
 import { canSeeTab } from './permissions.js';
+import { isTabRevealed, tabPhase } from './feature-reveal.js';
 
 export const pageTitles = {
   dashboardPage: 'لوحة المعلومات',
@@ -59,9 +60,32 @@ export function applyRoleVisibility() {
   });
 }
 
+// Locked tabs stay visible (not hidden) so the sidebar structure reads as
+// "more is coming," but are greyed out with a phase badge and don't
+// navigate on click.
+export function applyFeatureReveal() {
+  $$('.sidebar__link').forEach(link => {
+    const tab = link.dataset.tab;
+    const revealed = isTabRevealed(tab);
+    link.classList.toggle('sidebar__link--locked', !revealed);
+    const existingBadge = link.querySelector('.sidebar__lock-badge');
+    if (!revealed) {
+      const phase = tabPhase(tab);
+      if (!existingBadge) {
+        link.insertAdjacentHTML('beforeend', `<span class="sidebar__lock-badge">قريباً${phase ? ` · المرحلة ${phase}` : ''}</span>`);
+      }
+    } else if (existingBadge) {
+      existingBadge.remove();
+    }
+  });
+}
+
 export function bindNavEvents() {
   $$('.sidebar__link').forEach(link => {
-    link.addEventListener('click', () => showPage(link.dataset.tab));
+    link.addEventListener('click', () => {
+      if (!isTabRevealed(link.dataset.tab)) return;
+      showPage(link.dataset.tab);
+    });
   });
   $('#menuToggle')?.addEventListener('click', () => {
     document.body.classList.toggle('sidebar-open');
