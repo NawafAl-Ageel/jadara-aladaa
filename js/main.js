@@ -8,9 +8,14 @@ document.addEventListener('DOMContentLoaded', () => {
   function getMeta(name) {
     return (document.querySelector(`meta[name="${name}"]`)?.getAttribute('content') || '').trim();
   }
+  // Staging/local use a separate Supabase project so test submissions never
+  // land in the live leads inbox. Production is the default — only these
+  // explicitly-named hosts switch.
+  const STAGING_HOSTS = ['staging.dqnh44mdognyi.amplifyapp.com', 'localhost', '127.0.0.1'];
   function getSupabase() {
-    const url = getMeta('supabase-url');
-    const anonKey = getMeta('supabase-anon-key');
+    const staging = STAGING_HOSTS.includes(location.hostname);
+    const url = (staging && getMeta('supabase-url-staging')) || getMeta('supabase-url');
+    const anonKey = (staging && getMeta('supabase-anon-key-staging')) || getMeta('supabase-anon-key');
     // eslint-disable-next-line no-undef
     if (!url || !anonKey || !window.supabase) return null;
     // eslint-disable-next-line no-undef
