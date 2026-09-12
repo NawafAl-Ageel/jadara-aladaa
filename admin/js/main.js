@@ -8,6 +8,7 @@ import { initSupabase } from './modules/supabase-client.js';
 import { registerPageLoader, bindNavEvents, showPage } from './modules/nav.js';
 import { checkAuth, handleLogin, handleLogout } from './modules/auth.js';
 import { loadDashboard } from './modules/dashboard.js';
+import { loadAgent, bindAgentEvents } from './modules/agent.js';
 import { loadLeadsPage, bindLeadsEvents } from './modules/leads.js';
 import { loadClients, bindClientsEvents } from './modules/clients.js';
 import { loadProjects, bindProjectsEvents } from './modules/projects.js';
@@ -21,6 +22,7 @@ import { loadIntegrations } from './modules/integrations.js';
 import { bindModalOverlayClose } from './modules/modal.js';
 
 registerPageLoader('dashboardPage', loadDashboard);
+registerPageLoader('agentPage', loadAgent);
 registerPageLoader('listPage', loadLeadsPage);
 registerPageLoader('clientsPage', loadClients);
 registerPageLoader('projectsPage', loadProjects);
@@ -42,6 +44,7 @@ function bindEvents() {
   $('#backBtn').addEventListener('click', () => showPage('listPage'));
   $('#studioBackBtn').addEventListener('click', () => showPage('studioPage'));
 
+  bindAgentEvents();
   bindLeadsEvents();
   bindClientsEvents();
   bindProjectsEvents();

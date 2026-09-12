@@ -1,10 +1,11 @@
 import { $, $$ } from './dom.js';
 import { state } from './state.js';
 import { canSeeTab } from './permissions.js';
-import { isTabRevealed } from './feature-reveal.js';
+import { isTabHidden } from './feature-reveal.js';
 
 export const pageTitles = {
   dashboardPage: 'لوحة المعلومات',
+  agentPage: 'وكيل العروض الفنية',
   listPage: 'العملاء المحتملون',
   detailPage: 'تفاصيل العميل المحتمل',
   clientsPage: 'العملاء',
@@ -61,27 +62,19 @@ export function applyRoleVisibility() {
   });
 }
 
-// Locked tabs stay visible (not hidden) so the sidebar structure reads as
-// "more is coming," but are greyed out with a "قريباً" badge and don't
-// navigate on click.
-export function applyFeatureReveal() {
+// Switched-off modules are removed from the sidebar entirely. Their pages
+// and code still exist — see feature-reveal.js — so this is presentation
+// only, not access control.
+export function applyModuleVisibility() {
   $$('.sidebar__link').forEach(link => {
-    const tab = link.dataset.tab;
-    const revealed = isTabRevealed(tab);
-    link.classList.toggle('sidebar__link--locked', !revealed);
-    const existingBadge = link.querySelector('.sidebar__lock-badge');
-    if (!revealed) {
-      if (!existingBadge) link.insertAdjacentHTML('beforeend', `<span class="sidebar__lock-badge">قريباً</span>`);
-    } else if (existingBadge) {
-      existingBadge.remove();
-    }
+    if (isTabHidden(link.dataset.tab)) link.style.display = 'none';
   });
 }
 
 export function bindNavEvents() {
   $$('.sidebar__link').forEach(link => {
     link.addEventListener('click', () => {
-      if (!isTabRevealed(link.dataset.tab)) return;
+      if (isTabHidden(link.dataset.tab)) return;
       showPage(link.dataset.tab);
     });
   });

@@ -73,6 +73,14 @@
 
         <div class="sidebar__divider"><span>قوائم الأتمتة</span></div>
 
+        <button class="sidebar__link sidebar__link--agent" data-tab="agentPage">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2l1.9 5.8H20l-4.9 3.6 1.9 5.8-5-3.6-5 3.6 1.9-5.8L4 7.8h6.1z"/></svg>
+          <span class="sidebar__link-text">
+            <span class="sidebar__link-title">وكيل العروض الفنية</span>
+            <span class="sidebar__link-phase">تقديم عرض فني</span>
+          </span>
+        </button>
+
         <button class="sidebar__link" data-tab="studioPage">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 3v18h18"/><path d="M7 16v-4M12 16V8M17 16v-7"/></svg>
           <span class="sidebar__link-text">
@@ -133,6 +141,26 @@
       <main class="main">
 
         <!-- ===== DASHBOARD PAGE ===== -->
+        <!-- ===== AGENT (TECHNICAL PROPOSAL AUTOMATION) ===== -->
+        <section id="agentPage" class="page">
+          <div class="agent-hero">
+            <div class="agent-hero__badge">أتمتة</div>
+            <h2 class="agent-hero__title">وكيل العروض الفنية</h2>
+            <p class="agent-hero__subtitle">
+              يحوّل نطاق العمل إلى عرض فني كامل، ثم ينشره كصفحة ويب خاصة برابط فريد يُشارَك مع العميل.
+            </p>
+            <button class="agent-hero__cta" id="newProposalBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+              عرض فني جديد
+            </button>
+          </div>
+
+          <div class="toolbar">
+            <div class="toolbar__start"><h2 class="toolbar__title">العروض المُولّدة</h2></div>
+          </div>
+          <div id="agentContent"></div>
+        </section>
+
         <section id="dashboardPage" class="page page--active">
           <section class="stats-row">
             <div class="stat-card stat-card--total">
