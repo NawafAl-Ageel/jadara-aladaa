@@ -343,13 +343,34 @@ input, select, textarea { font-family: var(--font); }
 }
 .prof-working h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 6px; }
 .prof-working p { font-size: 0.85rem; color: var(--text-muted); }
-.prof-spinner {
-  width: 30px; height: 30px; margin: 18px auto 0;
-  border: 3px solid var(--border); border-top-color: var(--accent);
-  border-radius: 50%; animation: prof-spin 0.9s linear infinite;
+/* Indeterminate on purpose. The run has no measurable total — a bar creeping
+   toward a made-up percentage would be a guess dressed as information, so the
+   real signal sits underneath it: elapsed time, current round, searches done. */
+.prof-bar {
+  width: 100%; max-width: 420px; height: 6px; margin: 20px auto 12px;
+  background: var(--border); border-radius: 3px; overflow: hidden;
 }
-@keyframes prof-spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .prof-spinner { animation-duration: 3s; } }
+.prof-bar__fill {
+  width: 38%; height: 100%; border-radius: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--primary));
+  animation: prof-slide 1.6s ease-in-out infinite;
+}
+@keyframes prof-slide {
+  0% { transform: translateX(-110%); }
+  100% { transform: translateX(370%); }
+}
+
+.prof-stats {
+  display: flex; justify-content: center; flex-wrap: wrap; gap: 8px;
+  font-size: 0.76rem; color: var(--text-muted);
+}
+.prof-stats span {
+  background: #f1f5f9; border-radius: 20px; padding: 3px 12px; font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prof-bar__fill { animation: none; width: 100%; opacity: 0.45; }
+}
 
 .gng-pill--fact { background: #475569; font-weight: 600; }
 .gng-facts { display: flex; flex-wrap: wrap; gap: 8px; padding: 0; margin: 10px 0; list-style: none; }

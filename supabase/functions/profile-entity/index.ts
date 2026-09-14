@@ -144,20 +144,29 @@ async function createMessage(params: Record<string, unknown>): Promise<any> {
 // Server tools hand the turn back with stop_reason "pause_turn" mid-research;
 // continuing the same turn is what lets a run go deep instead of stopping at
 // whatever it had when the first window closed.
-async function researchLoop(params: Record<string, unknown>, maxContinues = 8) {
+type Progress = (note: string, searches: number) => Promise<void>;
+
+async function researchLoop(params: Record<string, unknown>, onProgress: Progress, maxContinues = 8) {
   let response = await createMessage(params);
   const messages = [...(params.messages as unknown[])];
   let searches = countSearches(response.content);
+  await onProgress(`جولة البحث 1`, searches);
 
   for (let i = 0; i < maxContinues && response.stop_reason === "pause_turn"; i++) {
     messages.push({ role: "assistant", content: response.content });
     response = await createMessage({ ...params, messages });
     searches += countSearches(response.content);
+    await onProgress(`جولة البحث ${i + 2}`, searches);
   }
   return { response, searches };
 }
 
-async function runResearch(entityName: string, aliases: string[], context: string | null) {
+async function runResearch(
+  entityName: string,
+  aliases: string[],
+  context: string | null,
+  onProgress: Progress,
+) {
   const hints = [
     `الجهة المطلوب بحثها: ${entityName}`,
     aliases?.length ? `أسماء أخرى محتملة: ${aliases.join("، ")}` : "",
@@ -173,11 +182,13 @@ async function runResearch(entityName: string, aliases: string[], context: strin
     tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 30 }],
     system: RESEARCH_SYSTEM,
     messages: [{ role: "user", content: hints }],
-  });
+  }, onProgress);
 
   if (response.stop_reason === "refusal") throw new Error("refusal");
   const findings = textOf(response.content);
   if (!findings) throw new Error("البحث لم يُرجع نتائج");
+
+  await onProgress("ترتيب النتائج في ملف منظّم", searches);
 
   // Structuring is a separate pass: the research turn needs tools and room to
   // roam, and forcing a JSON schema onto it would constrain the search itself.
@@ -224,20 +235,43 @@ Deno.serve(async (req: Request) => {
       return json({ status: row.status, id: row.id });
     }
 
-    await admin.from("entity_profiles")
-      .update({ status: "researching", started_at: new Date().toISOString(), error: null })
-      .eq("id", profileId);
+    // Caught here rather than deep in the SDK, where it surfaces as "Could not
+    // resolve authentication method" — true, but it doesn't tell you the
+    // project is missing a secret.
+    if (!Deno.env.get("ANTHROPIC_API_KEY")) {
+      await admin.from("entity_profiles").update({
+        status: "failed",
+        error: "مفتاح ANTHROPIC_API_KEY غير مضبوط في أسرار هذا المشروع في Supabase.",
+        completed_at: new Date().toISOString(),
+      }).eq("id", profileId);
+      return json({ error: "مفتاح ANTHROPIC_API_KEY غير مضبوط في هذا المشروع" }, 503);
+    }
+
+    await admin.from("entity_profiles").update({
+      status: "researching",
+      started_at: new Date().toISOString(),
+      error: null,
+      progress_note: "بدء البحث",
+      search_count: 0,
+    }).eq("id", profileId);
+
+    const onProgress = async (note: string, searches: number) => {
+      await admin.from("entity_profiles")
+        .update({ progress_note: note, search_count: searches })
+        .eq("id", profileId);
+    };
 
     const work = (async () => {
       try {
         const { profile, searches, model } = await runResearch(
-          row.entity_name, row.aliases || [], row.provided_context,
+          row.entity_name, row.aliases || [], row.provided_context, onProgress,
         );
         await admin.from("entity_profiles").update({
           status: "done",
           profile,
           sources: profile.sources || [],
           search_count: searches,
+          progress_note: null,
           generated_by_model: model,
           completed_at: new Date().toISOString(),
         }).eq("id", profileId);

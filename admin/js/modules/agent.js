@@ -160,6 +160,26 @@ async function launchProfile() {
 }
 
 let stopPolling = null;
+let clockTimer = null;
+
+function stopClock() {
+  if (clockTimer) { clearInterval(clockTimer); clockTimer = null; }
+}
+
+function startClock(since) {
+  stopClock();
+  const started = new Date(since).getTime();
+  const tick = () => {
+    const el = $('#profElapsed');
+    if (!el) return stopClock();
+    const secs = Math.max(0, Math.floor((Date.now() - started) / 1000));
+    const m = String(Math.floor(secs / 60)).padStart(2, '0');
+    const s = String(secs % 60).padStart(2, '0');
+    el.textContent = `منذ ${m}:${s}`;
+  };
+  tick();
+  clockTimer = setInterval(tick, 1000);
+}
 
 async function openProfile(id) {
   view = { mode: 'profile', id };
@@ -180,7 +200,12 @@ async function openProfile(id) {
         <div class="prof-working">
           <h3>${esc(row.entity_name)}</h3>
           <p>الوكيل يبحث الآن. يستغرق ذلك عادة عدة دقائق — يمكنك ترك الصفحة والعودة لاحقاً.</p>
-          <div class="prof-spinner"></div>
+          <div class="prof-bar"><div class="prof-bar__fill"></div></div>
+          <div class="prof-stats">
+            <span id="profElapsed">—</span>
+            ${row.progress_note ? `<span>${esc(row.progress_note)}</span>` : ''}
+            ${row.search_count ? `<span>${row.search_count} عملية بحث</span>` : ''}
+          </div>
         </div>` : ''}
       ${row.status === 'failed' ? `
         <div class="empty-state">فشل البحث: ${esc(row.error || 'سبب غير معروف')}</div>` : ''}
@@ -190,9 +215,18 @@ async function openProfile(id) {
     `;
     $('#profBackBtn')?.addEventListener('click', () => {
       if (stopPolling) { stopPolling(); stopPolling = null; }
+      stopClock();
       renderHome();
     });
     $('#profPrintBtn')?.addEventListener('click', () => window.print());
+
+    // The poll is every few seconds; the clock ticks every second so the run
+    // reads as alive between updates rather than frozen.
+    if (row.status === 'researching' || row.status === 'queued') {
+      startClock(row.started_at || row.created_at);
+    } else {
+      stopClock();
+    }
   };
 
   try {
