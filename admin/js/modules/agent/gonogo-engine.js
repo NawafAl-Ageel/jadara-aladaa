@@ -85,10 +85,27 @@ export function scoreAssessment(assessment, criteria) {
   return { rows, total, decision: decisionBand(total) };
 }
 
+export async function loadCapabilities() {
+  try {
+    const sb = getSupabase();
+    const { data, error } = await sb.from('jadara_capabilities').select('*').order('area');
+    if (error) return [];
+    return data || [];
+  } catch {
+    return [];
+  }
+}
+
+/* Jadara's capability profile is sent with the request so the model scores
+   جاهزية القدرات by comparing the tender's required-team table against what
+   Jadara actually has, instead of against a paragraph of generic self-
+   description. The Edge Function resolves the Hijri deadline itself. */
 export async function generateAssessment({ rfpText, entityName }) {
   const sb = getSupabase();
+  const capabilities = await loadCapabilities();
+
   const { data, error } = await sb.functions.invoke('generate-gonogo', {
-    body: { rfpText, entityName }
+    body: { rfpText, entityName, capabilities }
   });
   if (error) throw error;
   if (data?.error) throw new Error(data.error);
@@ -101,7 +118,7 @@ function toDate(value) {
   return isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
 }
 
-export async function saveAssessment({ assessment, entityProfile, model, sourceText, scoring }) {
+export async function saveAssessment({ assessment, extraction, deadline, entityProfile, model, sourceText, scoring }) {
   const sb = getSupabase();
   const { data: { user } } = await sb.auth.getUser();
   const meta = assessment.meta || {};
@@ -112,7 +129,9 @@ export async function saveAssessment({ assessment, entityProfile, model, sourceT
     rfp_reference: meta.rfp_reference || null,
     sector: meta.sector || null,
     opportunity_type: meta.opportunity_type || null,
-    submission_deadline: toDate(meta.submission_deadline),
+    submission_deadline: deadline?.gregorian || toDate(meta.submission_deadline),
+    submission_deadline_hijri: deadline?.hijri || null,
+    days_to_deadline: deadline?.days_remaining ?? null,
     request_date: toDate(meta.request_date),
     expected_duration: meta.expected_duration || null,
     estimated_value_min: assessment.commercial?.estimated_value_min ?? null,
@@ -122,6 +141,7 @@ export async function saveAssessment({ assessment, entityProfile, model, sourceT
     total_score: scoring.total,
     decision: scoring.decision,
     content: assessment,
+    extraction: extraction || null,
     source_text: sourceText,
     entity_profile: entityProfile ? { text: entityProfile } : null,
     generated_by_model: model || null,

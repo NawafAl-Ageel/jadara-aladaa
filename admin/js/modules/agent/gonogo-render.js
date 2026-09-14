@@ -59,7 +59,88 @@ function decisionMatrix(scoring, averages) {
   `;
 }
 
-export function renderAssessment(assessment, scoring, averages) {
+const MATCH_LABELS = { met: 'متوفر', partial: 'جزئي', gap: 'فجوة', unknown: 'يحتاج تحقق' };
+
+/* The tender's own hard requirements, quoted from the document rather than
+   inferred. These are what actually decide the bid — the required-team table
+   in particular — so they're shown as facts, visually separate from the
+   assessment's judgement. */
+function requirementsSection(ex, deadline) {
+  if (!ex) return '';
+  const ev = ex.evaluation || {};
+  const team = ex.team_requirements || [];
+  const g = ex.guarantees || {};
+  const p = ex.penalties || {};
+
+  const facts = [
+    ev.disclosed && ev.technical_weight ? `التقييم الفني ${ev.technical_weight}% · المالي ${ev.financial_weight}%` : null,
+    ev.technical_pass_threshold ? `نسبة الاجتياز الفني ${ev.technical_pass_threshold}` : null,
+    g.bid_bond_percent ? `ضمان ابتدائي ${g.bid_bond_percent}%` : null,
+    g.performance_bond_percent ? `ضمان نهائي ${g.performance_bond_percent}%` : null,
+    g.offer_validity_days ? `صلاحية العرض ${g.offer_validity_days} يوماً` : null,
+    ex.saudization?.required_percent ? `توطين ${ex.saudization.required_percent}%` : null,
+    p.cap_percent ? `سقف الغرامات ${p.cap_percent}%` : null,
+    ex.subcontracting?.allowed ? `تعاقد من الباطن حتى ${ex.subcontracting.max_percent || '—'}%` : null,
+    ex.tender?.document_cost ? `تكلفة الكراسة ${ex.tender.document_cost}` : null,
+  ].filter(Boolean);
+
+  return `
+    <section class="gng-section">
+      <h2>متطلبات الكراسة <span class="gng-pill gng-pill--fact">مستخرجة من الوثيقة</span></h2>
+      ${deadline?.hijri ? `
+        <p class="gng-deadline ${deadlineClass(deadline.days_remaining)}">
+          الموعد النهائي: ${esc(deadline.hijri)} هـ
+          ${deadline.gregorian ? ` (${esc(deadline.gregorian)} م)` : ''}
+          ${deadline.days_remaining !== null && deadline.days_remaining !== undefined
+            ? ` — ${deadlineText(deadline.days_remaining)}` : ''}
+        </p>` : ''}
+      ${facts.length ? `<ul class="gng-facts">${facts.map(f => `<li>${esc(f)}</li>`).join('')}</ul>` : ''}
+      ${ev.technical_criteria?.length ? `
+        <h3>أوزان التقييم الفني</h3>
+        <table class="gng-table">
+          <thead><tr><th>المعيار</th><th>الوزن</th></tr></thead>
+          <tbody>${ev.technical_criteria.map(c =>
+            `<tr><td>${esc(c.name)}</td><td>${esc(String(c.weight ?? '—'))}</td></tr>`).join('')}
+          </tbody>
+        </table>` : ''}
+      ${team.length ? `
+        <h3>فريق العمل المطلوب</h3>
+        <table class="gng-table">
+          <thead><tr><th>المسمى</th><th>العدد</th><th>المؤهل</th><th>الخبرة</th><th>الشهادات</th><th>الحضور</th></tr></thead>
+          <tbody>${team.map(t => `
+            <tr>
+              <td>${esc(t.role)}</td>
+              <td>${esc(String(t.count ?? '—'))}</td>
+              <td>${esc(t.min_qualification || '—')}</td>
+              <td>${t.min_years ? esc(String(t.min_years)) + ' سنوات' : '—'}</td>
+              <td>${(t.certifications || []).length ? esc((t.certifications || []).join('، ')) : '—'}</td>
+              <td>${esc(t.onsite || '—')}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>` : ''}
+      ${(ex.compliance || []).length
+        ? `<h3>متطلبات الامتثال</h3><ul>${list(ex.compliance)}</ul>` : ''}
+      ${(ex.missing || []).length
+        ? `<div class="gng-gaps"><h3>غير مفصح عنه في الكراسة</h3><ul>${list(ex.missing)}</ul></div>` : ''}
+    </section>
+  `;
+}
+
+function deadlineClass(days) {
+  if (days === null || days === undefined) return '';
+  if (days < 0) return 'gng-deadline--expired';
+  if (days <= 10) return 'gng-deadline--critical';
+  if (days <= 20) return 'gng-deadline--tight';
+  return '';
+}
+
+function deadlineText(days) {
+  if (days < 0) return `انقضى منذ ${Math.abs(days)} يوماً`;
+  if (days === 0) return 'ينتهي اليوم';
+  return `متبقٍ ${days} يوماً`;
+}
+
+export function renderAssessment(assessment, scoring, averages, extraction, deadline) {
   const a = assessment || {};
   const meta = a.meta || {};
   const dec = scoring.decision;
@@ -92,6 +173,8 @@ export function renderAssessment(assessment, scoring, averages) {
         ${a.executive_summary?.critical_alert
           ? `<p class="gng-alert">${esc(a.executive_summary.critical_alert)}</p>` : ''}
       </section>
+
+      ${requirementsSection(extraction, deadline)}
 
       <section class="gng-section">
         <h2>نظرة عامة على الفرصة</h2>
@@ -134,6 +217,18 @@ export function renderAssessment(assessment, scoring, averages) {
             `<tr><td>${esc(r.dimension)}</td><td>${esc(r.level)}</td><td>${esc(r.assessment)}</td></tr>`).join('')}
           </tbody>
         </table>
+        ${(a.capabilities?.requirement_match || []).length ? `
+          <h3>مطابقة متطلبات الكراسة بقدرات جَدارة</h3>
+          <table class="gng-table">
+            <thead><tr><th>المتطلب</th><th>وضع جَدارة</th><th>الحالة</th></tr></thead>
+            <tbody>${a.capabilities.requirement_match.map(r => `
+              <tr>
+                <td>${esc(r.requirement)}</td>
+                <td>${esc(r.jadara_position)}</td>
+                <td><span class="gng-match gng-match--${esc(r.status)}">${esc(MATCH_LABELS[r.status] || r.status)}</span></td>
+              </tr>`).join('')}
+            </tbody>
+          </table>` : ''}
         ${(a.capabilities?.gaps || []).length
           ? `<div class="gng-gaps"><h3>فجوات القدرات الواجب معالجتها</h3><ul>${list(a.capabilities.gaps)}</ul></div>` : ''}
       </section>

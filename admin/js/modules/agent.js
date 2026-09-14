@@ -4,6 +4,7 @@ import {
   saveAssessment, listAssessments, getAssessment, DECISION_LABELS
 } from './agent/gonogo-engine.js';
 import { renderAssessment } from './agent/gonogo-render.js';
+import { daysUntil } from './agent/hijri.js';
 
 /* The Agent page. Two capabilities:
    - قرار المشاركة (Go/No-Go) — live.
@@ -131,6 +132,8 @@ async function runGeneration() {
 
     const row = await saveAssessment({
       assessment: result.assessment,
+      extraction: result.extraction,
+      deadline: result.deadline,
       entityProfile: result.entity_profile,
       model: result.model,
       sourceText: rfpText,
@@ -146,6 +149,18 @@ async function runGeneration() {
 }
 
 /* ---------------- view one assessment ---------------- */
+
+/* Days-remaining is recomputed on every view rather than read from the row.
+   An assessment saved with "متبقٍ 7 أيام" is misleading a fortnight later,
+   and the deadline is the factor most likely to flip the decision. */
+function liveDeadline(row) {
+  if (!row.submission_deadline && !row.submission_deadline_hijri) return null;
+  return {
+    hijri: row.submission_deadline_hijri,
+    gregorian: row.submission_deadline,
+    days_remaining: row.submission_deadline ? daysUntil(new Date(row.submission_deadline)) : null
+  };
+}
 
 async function openAssessment(id) {
   view = { mode: 'assessment', id };
@@ -177,7 +192,7 @@ async function openAssessment(id) {
         <button type="button" class="btn-back" id="gngBackBtn">رجوع للقائمة</button>
         <button type="button" class="btn-back" id="gngPrintBtn">طباعة / حفظ PDF</button>
       </div>
-      ${renderAssessment(row.content, scoring, averages)}
+      ${renderAssessment(row.content, scoring, averages, row.extraction, liveDeadline(row))}
       ${row.entity_profile?.text ? `
         <details class="gng-profile">
           <summary>ملف الجهة الذي بُني عليه التقييم (من بحث في المصادر العامة)</summary>
