@@ -241,6 +241,117 @@ input, select, textarea { font-family: var(--font); }
   .agent-hero__title { font-size: 1.3rem; }
 }
 
+/* ---- Agent capability cards ---- */
+
+.agent-caps { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-bottom: 24px; }
+.agent-cap {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 20px; box-shadow: var(--shadow);
+}
+.agent-cap--live { border-color: var(--accent); }
+.agent-cap h3 { font-size: 1rem; font-weight: 700; margin: 8px 0 6px; }
+.agent-cap p { font-size: 0.84rem; color: var(--text-muted); margin-bottom: 14px; }
+.agent-cap__status {
+  display: inline-block; font-size: 0.66rem; font-weight: 700; padding: 3px 10px;
+  border-radius: 20px; background: #dcfce7; color: #166534;
+}
+.agent-cap__status--soon { background: #f1f2f4; color: var(--text-muted); }
+
+/* ---- Go/No-Go assessment document ---- */
+
+.gng-toolbar { display: flex; gap: 8px; margin-bottom: 16px; }
+
+.gng-doc { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.gng-doc h2 {
+  font-size: 1.05rem; font-weight: 700; color: var(--primary);
+  padding-bottom: 8px; margin-bottom: 14px; border-bottom: 2px solid var(--accent);
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.gng-doc h3 { font-size: 0.86rem; font-weight: 700; margin: 14px 0 6px; color: var(--accent); }
+.gng-doc h4 { font-size: 0.85rem; font-weight: 700; margin-bottom: 4px; }
+.gng-doc ul { padding-inline-start: 18px; }
+.gng-doc li { font-size: 0.84rem; margin-bottom: 5px; }
+.gng-doc p { font-size: 0.86rem; }
+
+.gng-cover { background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; padding: 32px 28px; }
+.gng-cover__kicker { font-size: 0.75rem; opacity: 0.8; margin-bottom: 6px; }
+.gng-cover__title { font-size: 1.5rem; font-weight: 700; line-height: 1.35; margin-bottom: 20px; }
+.gng-cover__meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.gng-cover__meta dt { font-size: 0.68rem; opacity: 0.7; margin-bottom: 2px; }
+.gng-cover__meta dd { font-size: 0.85rem; font-weight: 600; }
+
+.gng-verdict { display: inline-flex; align-items: center; gap: 14px; padding: 10px 20px; border-radius: 8px; background: rgba(255,255,255,0.15); }
+.gng-verdict__label { font-size: 1.05rem; font-weight: 700; }
+.gng-verdict__score { font-size: 0.9rem; opacity: 0.85; }
+.gng-verdict--inline { background: #f1f2f4; color: var(--text); margin-bottom: 12px; }
+.gng-verdict--go { background: #16a34a; color: #fff; }
+.gng-verdict--go_with_conditions { background: #ea9a1a; color: #fff; }
+.gng-verdict--borderline { background: #eab308; color: #422006; }
+.gng-verdict--no_go { background: #dc2626; color: #fff; }
+
+.gng-section { padding: 22px 28px; border-bottom: 1px solid var(--border); }
+.gng-section:last-child { border-bottom: none; }
+.gng-section--opinion { background: #fafbfc; }
+.gng-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
+.gng-objective { margin-bottom: 14px; }
+.gng-pill { font-size: 0.72rem; font-weight: 700; background: var(--accent); color: #fff; padding: 2px 10px; border-radius: 20px; }
+
+.gng-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 12px 0; }
+.gng-card { background: #fafbfc; border: 1px solid var(--border); border-top: 3px solid var(--accent); border-radius: 6px; padding: 12px; }
+.gng-card__index { font-size: 0.68rem; font-weight: 700; color: var(--accent); }
+.gng-card p { font-size: 0.78rem; color: var(--text-muted); }
+
+.gng-table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 0.82rem; }
+.gng-table th { background: var(--primary); color: #fff; padding: 9px 10px; text-align: start; font-weight: 600; font-size: 0.78rem; }
+.gng-table td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.gng-table tbody tr:nth-child(even) { background: #fafbfc; }
+.gng-table tfoot td { background: var(--accent); color: #fff; font-weight: 700; padding: 10px; }
+.gng-score { font-weight: 700; font-size: 0.92rem; }
+
+.gng-rag { display: inline-block; padding: 2px 12px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
+.gng-rag--red { background: #fee2e2; color: #991b1b; }
+.gng-rag--amber { background: #fef3c7; color: #92400e; }
+.gng-rag--green { background: #dcfce7; color: #166534; }
+
+/* The relative-perspective column: how this score compares with every past
+   assessment. Sample size is surfaced when it's too small to mean much. */
+.gng-bench { font-size: 0.76rem; font-weight: 600; white-space: nowrap; }
+.gng-bench--up { color: #16a34a; }
+.gng-bench--down { color: #dc2626; }
+.gng-bench--flat { color: var(--text-muted); }
+.gng-bench--none { color: var(--text-muted); font-weight: 400; font-style: italic; }
+.gng-bench__thin { font-size: 0.68rem; color: var(--text-muted); font-weight: 400; }
+.gng-bands { font-size: 0.74rem; color: var(--text-muted); margin-top: 8px; }
+
+.gng-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.gng-stat { background: #fafbfc; border: 1px solid var(--border); border-radius: 8px; padding: 14px; text-align: center; }
+.gng-stat__value { display: block; font-size: 1.05rem; font-weight: 700; color: var(--accent); }
+.gng-stat__label { display: block; font-size: 0.72rem; color: var(--text-muted); margin-top: 3px; }
+
+.gng-alert { background: #fef3c7; border-inline-start: 4px solid #ea9a1a; padding: 12px 14px; border-radius: 6px; margin-top: 14px; font-weight: 600; }
+.gng-note { background: #f1f5f9; border-inline-start: 4px solid var(--accent); padding: 10px 14px; border-radius: 6px; margin-top: 12px; }
+.gng-gaps { background: #fff7ed; border-inline-start: 4px solid #ea9a1a; padding: 10px 14px; border-radius: 6px; margin-top: 12px; }
+.gng-missing { background: #f1f5f9; padding: 12px 14px; border-radius: 6px; margin-top: 14px; }
+.gng-swot--strong { background: #f0fdf4; border-radius: 6px; padding: 10px 14px; }
+.gng-swot--weak { background: #fef2f2; border-radius: 6px; padding: 10px 14px; }
+.gng-winprob { font-size: 0.95rem; margin-bottom: 12px; }
+.gng-opinion__verdict { font-size: 0.95rem; font-weight: 700; color: #166534; margin-bottom: 10px; }
+.gng-steps li { margin-bottom: 6px; }
+.gng-profile { margin-top: 16px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+.gng-profile summary { font-size: 0.84rem; font-weight: 600; cursor: pointer; }
+.gng-profile p { margin-top: 10px; white-space: pre-wrap; color: var(--text-muted); }
+
+.badge--gng-go { background: #dcfce7; color: #166534; }
+.badge--gng-go_with_conditions { background: #fef3c7; color: #92400e; }
+.badge--gng-borderline { background: #fef9c3; color: #854d0e; }
+.badge--gng-no_go { background: #fee2e2; color: #991b1b; }
+
+@media (max-width: 640px) {
+  .gng-cover { padding: 22px 18px; }
+  .gng-cover__title { font-size: 1.15rem; }
+  .gng-section { padding: 18px 16px; }
+}
+
 /* The Agent is the platform's one focus, so it gets visual weight no other
    nav item has: accent fill, a left accent bar, and a soft glow. */
 .sidebar__link--agent {
