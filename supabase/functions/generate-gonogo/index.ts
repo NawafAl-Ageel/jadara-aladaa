@@ -376,7 +376,7 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { rfpText, entityName, capabilities, skipResearch } = await req.json();
+    const { rfpText, entityName, capabilities, knownProfile, skipResearch } = await req.json();
 
     if (!rfpText || String(rfpText).trim().length < 200) {
       return json({ error: "نص كراسة الشروط مطلوب (200 حرف على الأقل)" }, 400);
@@ -396,11 +396,12 @@ Deno.serve(async (req: Request) => {
       extraction?.dates?.calendar,
     );
 
-    // 2. Research is best-effort.
-    let entityProfile: string | null = null;
+    // 2. Research is best-effort — and skipped entirely when the profiling
+    // agent has already produced a deeper profile for this entity.
+    let entityProfile: string | null = knownProfile ? JSON.stringify(knownProfile) : null;
     let profileError: string | null = null;
     const researchTarget = entityName || extraction?.tender?.issuer;
-    if (!skipResearch && researchTarget) {
+    if (!skipResearch && !knownProfile && researchTarget) {
       try {
         entityProfile = await profileEntity(researchTarget, String(rfpText).slice(0, 4000));
       } catch (err) {

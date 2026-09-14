@@ -1,13 +1,17 @@
 import { $, esc, formatDate } from './dom.js';
 import {
   loadCriteria, loadAverages, scoreAssessment, generateAssessment,
-  saveAssessment, listAssessments, getAssessment, DECISION_LABELS,
-  loadCapabilities, loadProfile, researchJadara, confirmCapability
+  saveAssessment, listAssessments, getAssessment, DECISION_LABELS
 } from './agent/gonogo-engine.js';
 import { renderAssessment } from './agent/gonogo-render.js';
+import { renderProfile } from './agent/profile-render.js';
+import {
+  startProfile, getProfile, listProfiles, pollProfile, STATUS_LABELS
+} from './agent/profiler.js';
 import { daysUntil } from './agent/hijri.js';
 
-/* The Agent page. Two capabilities:
+/* The Agent page. Three capabilities:
+   - تعريف الجهات (profiling) — deep background research on any entity.
    - قرار المشاركة (Go/No-Go) — live.
    - العرض الفني (technical proposal) — not built yet; the card says so
      rather than offering a button that does nothing. */
@@ -31,6 +35,12 @@ async function renderHome() {
     <div class="agent-caps">
       <div class="agent-cap agent-cap--live">
         <span class="agent-cap__status">متاح</span>
+        <h3>تعريف الجهات</h3>
+        <p>اكتب اسم أي جهة وأضف ما لديك من مواد، ويذهب الوكيل ليبحث بعمق ويعود بملف كامل عنها.</p>
+        <button type="button" class="btn-save" id="newProfileBtn">ملف جديد</button>
+      </div>
+      <div class="agent-cap agent-cap--live">
+        <span class="agent-cap__status">متاح</span>
         <h3>قرار المشاركة (Go / No-Go)</h3>
         <p>يقرأ كراسة الشروط، يبحث عن الجهة المصدرة، ثم يُصدر تقييماً مرجّحاً بقرار مشاركة وتوصية.</p>
         <button type="button" class="btn-save" id="newGonogoBtn">تقييم جديد</button>
@@ -41,127 +51,158 @@ async function renderHome() {
         <p>يحوّل نطاق العمل إلى عرض فني كامل يُنشر كصفحة ويب برابط خاص بالعميل.</p>
       </div>
     </div>
-    <div id="agentProfile"></div>
+    <div id="agentProfiles"></div>
     <div id="agentList"><p class="qa-empty">جارٍ تحميل التقييمات...</p></div>
   `;
+  $('#newProfileBtn').addEventListener('click', () => openProfileIntake());
   $('#newGonogoBtn').addEventListener('click', () => openIntake());
-  renderProfile();
+  renderProfileList();
   renderList();
 }
 
-/* ---------------- Jadara's own profile ---------------- */
+/* ---------------- profiling agent ---------------- */
 
-const SOURCE_LABELS = {
-  seeded: 'من تقييمات سابقة',
-  public_research: 'بحث عام — غير مؤكد',
-  confirmed: 'مؤكد'
-};
-
-async function renderProfile() {
-  const el = $('#agentProfile');
+async function renderProfileList() {
+  const el = $('#agentProfiles');
   if (!el) return;
-
-  const [profile, caps] = await Promise.all([loadProfile(), loadCapabilities()]);
-  const unverified = caps.filter(c => !c.verified).length;
-  const noHeadcount = caps.filter(c => c.headcount === null || c.headcount === undefined).length;
-
-  el.innerHTML = `
-    <details class="gng-profile" ${profile ? '' : 'open'}>
-      <summary>ملف قدرات جَدارة ${caps.length ? `· ${caps.length} مجال` : ''}${
-        unverified ? ` · <strong>${unverified} غير مؤكد</strong>` : ''}</summary>
-
-      <p class="content-hint">
-        يُستخدم هذا الملف لمطابقة متطلبات فريق العمل في كل كراسة. البحث العام يملأ الخدمات
-        والاعتمادات والعملاء المعلنين فقط — أما أعداد الفريق ومن يحمل شهادات المقيّمين
-        (EFQM / KAQA) ونسبة السعودة فلا تُنشر علناً، ويلزم إدخالها يدوياً.
-      </p>
-
-      <div class="gng-toolbar">
-        <button type="button" class="btn-save" id="researchJadaraBtn">ابحث عن جَدارة تلقائياً</button>
-      </div>
-      <p id="researchStatus" class="content-hint"></p>
-
-      ${noHeadcount ? `
-        <p class="gng-deadline gng-deadline--tight">
-          ${noHeadcount} من ${caps.length} مجالات بلا عدد فريق مسجّل — ستظهر متطلبات الكراسة
-          المقابلة لها بحالة "يحتاج تحقق" بدل "متوفر".
-        </p>` : ''}
-
-      ${profile ? `
-        <h3>الملف العام</h3>
-        ${profile.summary ? `<p>${esc(profile.summary)}</p>` : ''}
-        ${(profile.services || []).length ? `<h4>الخدمات المعلنة</h4><ul>${
-          profile.services.map(s => `<li>${esc(s)}</li>`).join('')}</ul>` : ''}
-        ${(profile.accreditations || []).length ? `<h4>اعتمادات الشركة</h4><ul>${
-          profile.accreditations.map(s => `<li>${esc(s)}</li>`).join('')}</ul>` : ''}
-        ${(profile.published_clients || []).length ? `<h4>عملاء معلنون</h4><ul>${
-          profile.published_clients.map(s => `<li>${esc(s)}</li>`).join('')}</ul>` : ''}
-        ${(profile.limitations || []).length ? `
-          <div class="gng-gaps">
-            <h4>ما لم يستطع البحث إثباته</h4>
-            <ul>${profile.limitations.map(s => `<li>${esc(s)}</li>`).join('')}</ul>
-          </div>` : ''}
-        ${profile.researched_at ? `<p class="content-hint">آخر بحث: ${formatDate(profile.researched_at)}</p>` : ''}
-      ` : ''}
-
-      ${caps.length ? `
-        <h3>مجالات القدرة</h3>
-        <table class="gng-table">
-          <thead><tr><th>المجال</th><th>الدور</th><th>الشهادات</th><th>العدد</th><th>المصدر</th><th></th></tr></thead>
-          <tbody>${caps.map(c => `
-            <tr>
-              <td>${esc(c.area)}</td>
-              <td>${esc(c.role || '—')}</td>
-              <td>${(c.certifications || []).length ? esc(c.certifications.join('، ')) : '—'}</td>
-              <td>
-                <input type="number" min="0" class="inline-input gng-headcount"
-                       data-cap="${c.id}" value="${c.headcount ?? ''}" placeholder="—" style="width:70px">
-              </td>
-              <td><span class="gng-match gng-match--${c.verified ? 'met' : 'unknown'}">${
-                esc(SOURCE_LABELS[c.source] || c.source)}</span></td>
-              <td><button type="button" class="btn-back" data-confirm-cap="${c.id}">تأكيد</button></td>
-            </tr>`).join('')}
-          </tbody>
-        </table>
-        <p class="content-hint">أدخل العدد ثم اضغط "تأكيد" — الصفوف المؤكدة لا يستبدلها البحث التلقائي.</p>
-      ` : ''}
-    </details>
-  `;
-
-  $('#researchJadaraBtn').addEventListener('click', runResearch);
-  el.querySelectorAll('[data-confirm-cap]').forEach(btn => {
-    btn.addEventListener('click', () => confirmRow(Number(btn.dataset.confirmCap), btn));
-  });
-}
-
-async function runResearch() {
-  const btn = $('#researchJadaraBtn');
-  const status = $('#researchStatus');
-  btn.disabled = true;
-  btn.textContent = 'جارٍ البحث...';
-  status.textContent = 'يبحث في المصادر العامة عن جَدارة الأداء. قد يستغرق ذلك دقيقة.';
   try {
-    await researchJadara();
-    await renderProfile();
+    const rows = await listProfiles();
+    if (!rows.length) { el.innerHTML = ''; return; }
+    el.innerHTML = `
+      <div class="toolbar"><div class="toolbar__start"><h2 class="toolbar__title">ملفات الجهات</h2></div></div>
+      <table class="table">
+        <thead><tr><th>الجهة</th><th>الحالة</th><th>عمليات البحث</th><th>التاريخ</th><th></th></tr></thead>
+        <tbody>
+          ${rows.map(r => `
+            <tr>
+              <td>${esc(r.entity_name)}</td>
+              <td><span class="gng-match gng-match--${statusClass(r.status)}">${
+                esc(STATUS_LABELS[r.status] || r.status)}</span>${
+                r.error ? `<div class="prof-error">${esc(r.error)}</div>` : ''}</td>
+              <td>${r.search_count ?? '—'}</td>
+              <td>${formatDate(r.created_at)}</td>
+              <td>${r.status === 'done'
+                ? `<button type="button" class="btn-back" data-open-profile="${r.id}">عرض</button>`
+                : r.status === 'researching'
+                  ? `<button type="button" class="btn-back" data-open-profile="${r.id}">متابعة</button>`
+                  : ''}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    `;
+    el.querySelectorAll('[data-open-profile]').forEach(btn => {
+      btn.addEventListener('click', () => openProfile(Number(btn.dataset.openProfile)));
+    });
   } catch (err) {
-    status.textContent = 'تعذر البحث: ' + (err?.message || String(err));
-    btn.disabled = false;
-    btn.textContent = 'ابحث عن جَدارة تلقائياً';
+    el.innerHTML = `<div class="empty-state">تعذر تحميل الملفات: ${esc(err?.message || String(err))}</div>`;
   }
 }
 
-async function confirmRow(id, btn) {
-  const input = $(`.gng-headcount[data-cap="${id}"]`);
-  const raw = input?.value.trim();
+function statusClass(status) {
+  return status === 'done' ? 'met' : status === 'failed' ? 'gap'
+    : status === 'researching' ? 'partial' : 'unknown';
+}
+
+function openProfileIntake() {
+  view = { mode: 'profileIntake' };
+  $('#agentContent').innerHTML = `
+    <div class="detail-card">
+      <div class="detail-card__header">
+        <h3>ملف تعريفي عن جهة</h3>
+        <button type="button" class="btn-back" id="profBackBtn">رجوع</button>
+      </div>
+      <div class="detail-card__body">
+        <div class="field">
+          <label for="profEntity">اسم الجهة</label>
+          <input type="text" id="profEntity" placeholder="مثال: وزارة الطاقة">
+        </div>
+        <div class="field">
+          <label for="profAliases">أسماء أو اختصارات أخرى (اختياري)</label>
+          <input type="text" id="profAliases" placeholder="مفصولة بفاصلة — مثال: MoEnergy, وزارة البترول سابقاً">
+        </div>
+        <div class="field">
+          <label for="profContext">ما لديك عن الجهة (اختياري)</label>
+          <textarea id="profContext" rows="10" placeholder="الصق أي شيء: تقرير سنوي، روابط، مراسلات سابقة، ملاحظات من اجتماع..."></textarea>
+          <p class="content-hint">يُعامَل ما تضعه هنا كمصدر موثوق، ويبني الوكيل بحثه فوقه بدل أن يبدأ من الصفر.</p>
+        </div>
+        <button class="btn-save" id="profStartBtn">ابدأ البحث</button>
+        <p class="content-hint">
+          يعمل البحث في الخلفية وقد يستغرق عدة دقائق — يمكنك إغلاق الصفحة والعودة لاحقاً،
+          فالنتيجة تُحفظ عند اكتمالها.
+        </p>
+        <p id="profStatus" class="content-hint"></p>
+      </div>
+    </div>
+  `;
+  $('#profBackBtn').addEventListener('click', renderHome);
+  $('#profStartBtn').addEventListener('click', launchProfile);
+}
+
+async function launchProfile() {
+  const btn = $('#profStartBtn');
+  const status = $('#profStatus');
+  const entityName = $('#profEntity').value.trim();
+  if (!entityName) { status.textContent = 'اكتب اسم الجهة أولاً.'; return; }
+
+  const aliases = $('#profAliases').value.split(',').map(s => s.trim()).filter(Boolean);
+  const context = $('#profContext').value.trim();
+
   btn.disabled = true;
-  btn.textContent = '...';
+  btn.textContent = 'جارٍ البدء...';
   try {
-    await confirmCapability(id, { headcount: raw === '' ? null : Number(raw) });
-    await renderProfile();
+    const row = await startProfile({ entityName, aliases, context });
+    await openProfile(row.id);
   } catch (err) {
-    alert('تعذر التأكيد: ' + (err?.message || String(err)));
+    status.textContent = 'تعذر بدء البحث: ' + (err?.message || String(err));
     btn.disabled = false;
-    btn.textContent = 'تأكيد';
+    btn.textContent = 'ابدأ البحث';
+  }
+}
+
+let stopPolling = null;
+
+async function openProfile(id) {
+  view = { mode: 'profile', id };
+  if (stopPolling) { stopPolling(); stopPolling = null; }
+
+  const el = $('#agentContent');
+  el.innerHTML = '<p class="qa-empty">جارٍ التحميل...</p>';
+
+  const paint = (row) => {
+    // Guard against a poll landing after the user has navigated elsewhere.
+    if (view.mode !== 'profile' || view.id !== id) return;
+    el.innerHTML = `
+      <div class="gng-toolbar">
+        <button type="button" class="btn-back" id="profBackBtn">رجوع</button>
+        ${row.status === 'done' ? '<button type="button" class="btn-back" id="profPrintBtn">طباعة / حفظ PDF</button>' : ''}
+      </div>
+      ${row.status === 'researching' || row.status === 'queued' ? `
+        <div class="prof-working">
+          <h3>${esc(row.entity_name)}</h3>
+          <p>الوكيل يبحث الآن. يستغرق ذلك عادة عدة دقائق — يمكنك ترك الصفحة والعودة لاحقاً.</p>
+          <div class="prof-spinner"></div>
+        </div>` : ''}
+      ${row.status === 'failed' ? `
+        <div class="empty-state">فشل البحث: ${esc(row.error || 'سبب غير معروف')}</div>` : ''}
+      ${row.status === 'done' ? renderProfile({ ...row.profile, entity_name: row.entity_name }) : ''}
+      ${row.status === 'done' && row.search_count
+        ? `<p class="content-hint">اعتمد الملف على ${row.search_count} عملية بحث.</p>` : ''}
+    `;
+    $('#profBackBtn')?.addEventListener('click', () => {
+      if (stopPolling) { stopPolling(); stopPolling = null; }
+      renderHome();
+    });
+    $('#profPrintBtn')?.addEventListener('click', () => window.print());
+  };
+
+  try {
+    const row = await getProfile(id);
+    paint(row);
+    if (row.status === 'queued' || row.status === 'researching') {
+      stopPolling = pollProfile(id, paint);
+    }
+  } catch (err) {
+    el.innerHTML = `<div class="empty-state">تعذر عرض الملف: ${esc(err?.message || String(err))}</div>`;
   }
 }
 

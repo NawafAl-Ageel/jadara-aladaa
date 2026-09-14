@@ -1,5 +1,6 @@
 import { getSupabase } from '../supabase-client.js';
 import { logAudit } from '../audit.js';
+import { findProfileForEntity } from './profiler.js';
 
 /* Go/No-Go scoring + persistence.
 
@@ -96,103 +97,33 @@ export async function loadCapabilities() {
   }
 }
 
-export async function loadProfile() {
-  try {
-    const sb = getSupabase();
-    const { data } = await sb.from('jadara_profile').select('*').eq('id', 1).maybeSingle();
-    return data || null;
-  } catch {
-    return null;
-  }
-}
-
-/* Researches Jadara's own firm from public sources.
-
-   What comes back is written as UNVERIFIED. Public sources can establish
-   services, accreditations and published clients; they cannot establish how
-   many consultants hold an EFQM assessor certificate or who is free for an
-   8-month deployment — so headcount fields are never written here, and the
-   requirement-match table keeps scoring those "unknown" until a human
-   confirms them. */
-export async function researchJadara() {
-  const sb = getSupabase();
-  const { data, error } = await sb.functions.invoke('research-jadara', { body: {} });
-  if (error) throw error;
-  if (data?.error) throw new Error(data.error);
-
-  const p = data.profile || {};
-  const { data: { user } } = await sb.auth.getUser();
-  const now = new Date().toISOString();
-
-  const { error: profileError } = await sb.from('jadara_profile').upsert([{
-    id: 1,
-    legal_name: p.legal_name || null,
-    summary: p.summary || null,
-    services: p.services || [],
-    accreditations: p.accreditations || [],
-    published_clients: p.published_clients || [],
-    positioning: p.positioning || null,
-    limitations: p.limitations || [],
-    sources: p.sources || [],
-    researched_at: now,
-    researched_by: user?.id || null,
-    updated_at: now
-  }]);
-  if (profileError) throw profileError;
-
-  // Researched capability areas never overwrite a human-confirmed row, and
-  // never carry headcount — only a person can establish that.
-  for (const area of p.capability_areas || []) {
-    const { data: existing } = await sb.from('jadara_capabilities')
-      .select('id, verified').eq('area', area.area).eq('role', area.role || '').maybeSingle();
-    if (existing?.verified) continue;
-
-    await sb.from('jadara_capabilities').upsert([{
-      area: area.area,
-      role: area.role || '',
-      certifications: area.certifications || [],
-      evidence: area.evidence || null,
-      source: 'public_research',
-      source_url: area.source_url || null,
-      verified: false,
-      researched_at: now,
-      updated_at: now
-    }], { onConflict: 'area,role' });
-  }
-
-  await logAudit('update', 'jadara_profile', 1, null, {
-    services: (p.services || []).length,
-    limitations: (p.limitations || []).length
-  });
-
-  return p;
-}
-
-export async function confirmCapability(id, fields) {
-  const sb = getSupabase();
-  const { error } = await sb.from('jadara_capabilities').update({
-    ...fields,
-    source: 'confirmed',
-    verified: true,
-    updated_at: new Date().toISOString()
-  }).eq('id', id);
-  if (error) throw error;
-}
-
 /* Jadara's capability profile is sent with the request so the model scores
    جاهزية القدرات by comparing the tender's required-team table against what
    Jadara actually has, instead of against a paragraph of generic self-
-   description. The Edge Function resolves the Hijri deadline itself. */
+   description. The Edge Function resolves the Hijri deadline itself.
+
+   If the profiling agent has already researched this entity, that profile is
+   reused instead of paying for the same research twice — its findings are far
+   deeper than the quick lookup the assessment would otherwise do. */
 export async function generateAssessment({ rfpText, entityName }) {
   const sb = getSupabase();
-  const capabilities = await loadCapabilities();
+  const [capabilities, existing] = await Promise.all([
+    loadCapabilities(),
+    findProfileForEntity(entityName)
+  ]);
 
   const { data, error } = await sb.functions.invoke('generate-gonogo', {
-    body: { rfpText, entityName, capabilities }
+    body: {
+      rfpText,
+      entityName,
+      capabilities,
+      knownProfile: existing?.profile || null,
+      skipResearch: Boolean(existing?.profile)
+    }
   });
   if (error) throw error;
   if (data?.error) throw new Error(data.error);
-  return data;
+  return { ...data, entity_profile_id: existing?.id || null };
 }
 
 function toDate(value) {
