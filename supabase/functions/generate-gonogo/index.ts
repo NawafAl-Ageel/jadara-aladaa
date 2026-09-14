@@ -318,23 +318,32 @@ function textOf(content: Array<{ type: string; text?: string }>): string {
   return content.filter((b) => b.type === "text").map((b) => b.text ?? "").join("\n").trim();
 }
 
+/* Every call streams. At high effort these runs are slow enough that the SDK
+   refuses a non-streaming request whose max_tokens could pass its ten-minute
+   ceiling. finalMessage() returns the same Message shape as create(), so
+   stop_reason and content read identically. */
+// deno-lint-ignore no-explicit-any
+async function createMessage(params: Record<string, unknown>): Promise<any> {
+  // deno-lint-ignore no-explicit-any
+  const stream = anthropic.beta.messages.stream(params as any);
+  return await stream.finalMessage();
+}
+
 // Server tools can hand the turn back with stop_reason "pause_turn" before
 // they're done; continue the same turn rather than treating it as the answer.
 async function runWithServerTools(params: Record<string, unknown>, maxContinues = 3) {
-  // deno-lint-ignore no-explicit-any
-  let response: any = await anthropic.beta.messages.create(params as any);
+  let response = await createMessage(params);
   const messages = [...(params.messages as unknown[])];
 
   for (let i = 0; i < maxContinues && response.stop_reason === "pause_turn"; i++) {
     messages.push({ role: "assistant", content: response.content });
-    // deno-lint-ignore no-explicit-any
-    response = await anthropic.beta.messages.create({ ...params, messages } as any);
+    response = await createMessage({ ...params, messages });
   }
   return response;
 }
 
 async function structured(system: string, user: string, schema: unknown, maxTokens: number) {
-  const response = await anthropic.beta.messages.create({
+  const response = await createMessage({
     model: MODEL,
     max_tokens: maxTokens,
     betas: [FALLBACK_BETA],
@@ -342,8 +351,7 @@ async function structured(system: string, user: string, schema: unknown, maxToke
     output_config: { effort: "high", format: { type: "json_schema", schema } },
     system,
     messages: [{ role: "user", content: user }],
-    // deno-lint-ignore no-explicit-any
-  } as any);
+  });
 
   if (response.stop_reason === "refusal") throw new Error("refusal");
   const raw = textOf(response.content);

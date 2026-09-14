@@ -129,19 +129,29 @@ function countSearches(content: Array<{ type: string }>): number {
   return content.filter((b) => b.type === "web_search_tool_result").length;
 }
 
+/* Every call here streams. A deep research turn can run for many minutes, and
+   the SDK refuses a non-streaming request whose max_tokens could exceed its
+   ten-minute ceiling — which is exactly what this function's token budgets do.
+   finalMessage() gives back the same Message shape as a plain create(), so
+   stop_reason and content are read identically downstream. */
+// deno-lint-ignore no-explicit-any
+async function createMessage(params: Record<string, unknown>): Promise<any> {
+  // deno-lint-ignore no-explicit-any
+  const stream = anthropic.beta.messages.stream(params as any);
+  return await stream.finalMessage();
+}
+
 // Server tools hand the turn back with stop_reason "pause_turn" mid-research;
 // continuing the same turn is what lets a run go deep instead of stopping at
 // whatever it had when the first window closed.
 async function researchLoop(params: Record<string, unknown>, maxContinues = 8) {
-  // deno-lint-ignore no-explicit-any
-  let response: any = await anthropic.beta.messages.create(params as any);
+  let response = await createMessage(params);
   const messages = [...(params.messages as unknown[])];
   let searches = countSearches(response.content);
 
   for (let i = 0; i < maxContinues && response.stop_reason === "pause_turn"; i++) {
     messages.push({ role: "assistant", content: response.content });
-    // deno-lint-ignore no-explicit-any
-    response = await anthropic.beta.messages.create({ ...params, messages } as any);
+    response = await createMessage({ ...params, messages });
     searches += countSearches(response.content);
   }
   return { response, searches };
@@ -171,7 +181,7 @@ async function runResearch(entityName: string, aliases: string[], context: strin
 
   // Structuring is a separate pass: the research turn needs tools and room to
   // roam, and forcing a JSON schema onto it would constrain the search itself.
-  const shaped = await anthropic.beta.messages.create({
+  const shaped = await createMessage({
     model: MODEL,
     max_tokens: 24000,
     betas: [FALLBACK_BETA],
@@ -182,8 +192,7 @@ async function runResearch(entityName: string, aliases: string[], context: strin
       role: "user",
       content: `${hints}\n\nنتائج البحث التي جمعتها:\n\n${findings}\n\nحوّلها إلى JSON حسب المخطط. لا تضف معلومة لم ترد أعلاه، وضع كل ما لم يثبت في "unverified".`,
     }],
-    // deno-lint-ignore no-explicit-any
-  } as any);
+  });
 
   if (shaped.stop_reason === "refusal") throw new Error("refusal");
   const raw = textOf(shaped.content);
