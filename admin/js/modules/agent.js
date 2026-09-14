@@ -1,7 +1,8 @@
 import { $, esc, formatDate } from './dom.js';
 import {
   loadCriteria, loadAverages, scoreAssessment, generateAssessment,
-  saveAssessment, listAssessments, getAssessment, DECISION_LABELS
+  saveAssessment, listAssessments, getAssessment, DECISION_LABELS,
+  loadCapabilities, loadProfile, researchJadara, confirmCapability
 } from './agent/gonogo-engine.js';
 import { renderAssessment } from './agent/gonogo-render.js';
 import { daysUntil } from './agent/hijri.js';
@@ -40,10 +41,128 @@ async function renderHome() {
         <p>يحوّل نطاق العمل إلى عرض فني كامل يُنشر كصفحة ويب برابط خاص بالعميل.</p>
       </div>
     </div>
+    <div id="agentProfile"></div>
     <div id="agentList"><p class="qa-empty">جارٍ تحميل التقييمات...</p></div>
   `;
   $('#newGonogoBtn').addEventListener('click', () => openIntake());
+  renderProfile();
   renderList();
+}
+
+/* ---------------- Jadara's own profile ---------------- */
+
+const SOURCE_LABELS = {
+  seeded: 'من تقييمات سابقة',
+  public_research: 'بحث عام — غير مؤكد',
+  confirmed: 'مؤكد'
+};
+
+async function renderProfile() {
+  const el = $('#agentProfile');
+  if (!el) return;
+
+  const [profile, caps] = await Promise.all([loadProfile(), loadCapabilities()]);
+  const unverified = caps.filter(c => !c.verified).length;
+  const noHeadcount = caps.filter(c => c.headcount === null || c.headcount === undefined).length;
+
+  el.innerHTML = `
+    <details class="gng-profile" ${profile ? '' : 'open'}>
+      <summary>ملف قدرات جَدارة ${caps.length ? `· ${caps.length} مجال` : ''}${
+        unverified ? ` · <strong>${unverified} غير مؤكد</strong>` : ''}</summary>
+
+      <p class="content-hint">
+        يُستخدم هذا الملف لمطابقة متطلبات فريق العمل في كل كراسة. البحث العام يملأ الخدمات
+        والاعتمادات والعملاء المعلنين فقط — أما أعداد الفريق ومن يحمل شهادات المقيّمين
+        (EFQM / KAQA) ونسبة السعودة فلا تُنشر علناً، ويلزم إدخالها يدوياً.
+      </p>
+
+      <div class="gng-toolbar">
+        <button type="button" class="btn-save" id="researchJadaraBtn">ابحث عن جَدارة تلقائياً</button>
+      </div>
+      <p id="researchStatus" class="content-hint"></p>
+
+      ${noHeadcount ? `
+        <p class="gng-deadline gng-deadline--tight">
+          ${noHeadcount} من ${caps.length} مجالات بلا عدد فريق مسجّل — ستظهر متطلبات الكراسة
+          المقابلة لها بحالة "يحتاج تحقق" بدل "متوفر".
+        </p>` : ''}
+
+      ${profile ? `
+        <h3>الملف العام</h3>
+        ${profile.summary ? `<p>${esc(profile.summary)}</p>` : ''}
+        ${(profile.services || []).length ? `<h4>الخدمات المعلنة</h4><ul>${
+          profile.services.map(s => `<li>${esc(s)}</li>`).join('')}</ul>` : ''}
+        ${(profile.accreditations || []).length ? `<h4>اعتمادات الشركة</h4><ul>${
+          profile.accreditations.map(s => `<li>${esc(s)}</li>`).join('')}</ul>` : ''}
+        ${(profile.published_clients || []).length ? `<h4>عملاء معلنون</h4><ul>${
+          profile.published_clients.map(s => `<li>${esc(s)}</li>`).join('')}</ul>` : ''}
+        ${(profile.limitations || []).length ? `
+          <div class="gng-gaps">
+            <h4>ما لم يستطع البحث إثباته</h4>
+            <ul>${profile.limitations.map(s => `<li>${esc(s)}</li>`).join('')}</ul>
+          </div>` : ''}
+        ${profile.researched_at ? `<p class="content-hint">آخر بحث: ${formatDate(profile.researched_at)}</p>` : ''}
+      ` : ''}
+
+      ${caps.length ? `
+        <h3>مجالات القدرة</h3>
+        <table class="gng-table">
+          <thead><tr><th>المجال</th><th>الدور</th><th>الشهادات</th><th>العدد</th><th>المصدر</th><th></th></tr></thead>
+          <tbody>${caps.map(c => `
+            <tr>
+              <td>${esc(c.area)}</td>
+              <td>${esc(c.role || '—')}</td>
+              <td>${(c.certifications || []).length ? esc(c.certifications.join('، ')) : '—'}</td>
+              <td>
+                <input type="number" min="0" class="inline-input gng-headcount"
+                       data-cap="${c.id}" value="${c.headcount ?? ''}" placeholder="—" style="width:70px">
+              </td>
+              <td><span class="gng-match gng-match--${c.verified ? 'met' : 'unknown'}">${
+                esc(SOURCE_LABELS[c.source] || c.source)}</span></td>
+              <td><button type="button" class="btn-back" data-confirm-cap="${c.id}">تأكيد</button></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+        <p class="content-hint">أدخل العدد ثم اضغط "تأكيد" — الصفوف المؤكدة لا يستبدلها البحث التلقائي.</p>
+      ` : ''}
+    </details>
+  `;
+
+  $('#researchJadaraBtn').addEventListener('click', runResearch);
+  el.querySelectorAll('[data-confirm-cap]').forEach(btn => {
+    btn.addEventListener('click', () => confirmRow(Number(btn.dataset.confirmCap), btn));
+  });
+}
+
+async function runResearch() {
+  const btn = $('#researchJadaraBtn');
+  const status = $('#researchStatus');
+  btn.disabled = true;
+  btn.textContent = 'جارٍ البحث...';
+  status.textContent = 'يبحث في المصادر العامة عن جَدارة الأداء. قد يستغرق ذلك دقيقة.';
+  try {
+    await researchJadara();
+    await renderProfile();
+  } catch (err) {
+    status.textContent = 'تعذر البحث: ' + (err?.message || String(err));
+    btn.disabled = false;
+    btn.textContent = 'ابحث عن جَدارة تلقائياً';
+  }
+}
+
+async function confirmRow(id, btn) {
+  const input = $(`.gng-headcount[data-cap="${id}"]`);
+  const raw = input?.value.trim();
+  btn.disabled = true;
+  btn.textContent = '...';
+  try {
+    await confirmCapability(id, { headcount: raw === '' ? null : Number(raw) });
+    await renderProfile();
+  } catch (err) {
+    alert('تعذر التأكيد: ' + (err?.message || String(err)));
+    btn.disabled = false;
+    btn.textContent = 'تأكيد';
+  }
 }
 
 async function renderList() {
