@@ -57,8 +57,7 @@ const obj = (properties: Record<string, unknown>) => ({
   required: Object.keys(properties),
   additionalProperties: false,
 });
-const arrayOf = (items: unknown, maxItems?: number) =>
-  maxItems ? { type: "array", maxItems, items } : { type: "array", items };
+const arrayOf = (items: unknown) => ({ type: "array", items });
 
 /* What Exa is asked to establish. Arrays are bounded: an unbounded list makes
    both run cost and output size unpredictable. */
@@ -115,21 +114,26 @@ const EXA_SCHEMA = {
    enough for the API to reject ("The compiled grammar is too large"). Exa's
    structured output is kept verbatim as the factual record; Claude only
    contributes what search can't: the read for Jadara, and the service mapping.
-   Small schema, small output, one cheap call. */
+   Small schema, small output, one cheap call.
+
+   No maxItems here: Anthropic's structured output rejects it outright ("For
+   'array' type, property 'maxItems' is not supported"). The counts are stated
+   in the prompt instead. EXA_SCHEMA above keeps its bounds — that's Exa's API,
+   and there the bound is what caps the bill. */
 const ANALYSIS_SCHEMA = obj({
   summary: str,
-  strategic_read: arrayOf(str, 6),
-  consulting_entry_points: arrayOf(obj({ need: str, jadara_service: str, rationale: str }), 6),
-  unverified: arrayOf(str, 10),
+  strategic_read: strArray,
+  consulting_entry_points: arrayOf(obj({ need: str, jadara_service: str, rationale: str })),
+  unverified: strArray,
 });
 
 const ANALYSIS_SYSTEM = `أنت مستشار أول في شركة "جَدارة الأداء" للاستشارات الإدارية (السعودية). وصلتك حقائق مستخرجة من بحث عن جهة يُحتمل أن تكون عميلاً.
 
 الحقائق نفسها محفوظة ومعروضة كما هي — لا تُعدها ولا تُعد كتابتها. مهمتك ما لا يستطيع البحث إنتاجه فقط:
 - summary: فقرة عربية موجزة (٣-٥ جمل) تصف الجهة وما يهمّنا فيها.
-- strategic_read: نقاط قصيرة عمّا تعنيه هذه الحقائق لجَدارة تحديداً (حجم الفرصة، نضج الجهة، أسلوب تعاقدها، ما يرجّح أو يضعف موقعنا).
-- consulting_entry_points: اربط احتياجاً ظاهراً في الحقائق بخدمة محددة من خدمات جَدارة، مع مبرر مستند إلى ما ورد فعلاً.
-- unverified: ما لم يثبت — ابدأ بما ورد في "not_found" وأضف أي فجوة جوهرية تلاحظها.
+- strategic_read: من ٣ إلى ٦ نقاط قصيرة عمّا تعنيه هذه الحقائق لجَدارة تحديداً (حجم الفرصة، نضج الجهة، أسلوب تعاقدها، ما يرجّح أو يضعف موقعنا).
+- consulting_entry_points: ٣ إلى ٦ مداخل كحد أقصى — اربط احتياجاً ظاهراً في الحقائق بخدمة محددة من خدمات جَدارة، مع مبرر مستند إلى ما ورد فعلاً.
+- unverified: عشر نقاط كحد أقصى ممّا لم يثبت — ابدأ بما ورد في "not_found" وأضف أي فجوة جوهرية تلاحظها.
 
 خدمات جَدارة: الحوكمة وإدارة المخاطر والامتثال (GRC)، إدارة الجودة وتدقيق الآيزو، التميز المؤسسي وتقييم النضج (KAQA / EFQM)، استمرارية الأعمال (BCM/DRP وفق ISO 22301)، تطوير المنهجيات والأطر التنظيمية، بناء القدرات والتدريب.
 
