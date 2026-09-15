@@ -31,10 +31,10 @@ const MODEL = "claude-opus-5";
 const FALLBACK_BETA = "server-side-fallback-2026-07-01";
 
 const EXA_BASE = "https://api.exa.ai";
-// Entity research for a bid decision is genuinely hard research, so not the
-// cheap band — but not xhigh either, since latency was the complaint that
-// moved us to Exa. One constant to turn if the balance is wrong.
-const EXA_EFFORT = "high";
+// Dropped from "high" once cost became the concern. Exa bills per run and per
+// enriched item, so this and the maxItems bounds below are the two levers that
+// actually move the bill. Raise to "high" for a hard-to-find entity.
+const EXA_EFFORT = "medium";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -76,7 +76,7 @@ const EXA_SCHEMA = {
     sectors: { type: "array", maxItems: 10, items: str },
     vision_2030_alignment: str,
     published_strategy: str,
-    programs: { type: "array", maxItems: 12, items: str },
+    programs: { type: "array", maxItems: 8, items: str },
     stated_challenges: { type: "array", maxItems: 10, items: str },
     leadership: {
       type: "array", maxItems: 10,
@@ -84,72 +84,58 @@ const EXA_SCHEMA = {
     },
     budget: str,
     staff_size: str,
-    departments: { type: "array", maxItems: 15, items: str },
-    subsidiaries: { type: "array", maxItems: 15, items: str },
+    departments: { type: "array", maxItems: 10, items: str },
+    subsidiaries: { type: "array", maxItems: 10, items: str },
     procurement_platform: str,
     past_tenders: {
-      type: "array", maxItems: 15,
+      type: "array", maxItems: 8,
       items: {
         type: "object",
         properties: { title: str, reference: str, date: str, supplier: str },
         required: ["title"],
       },
     },
-    known_suppliers: { type: "array", maxItems: 12, items: str },
-    certifications: { type: "array", maxItems: 12, items: str },
+    known_suppliers: { type: "array", maxItems: 8, items: str },
+    certifications: { type: "array", maxItems: 8, items: str },
     excellence_awards: { type: "array", maxItems: 8, items: str },
     digital_initiatives: { type: "array", maxItems: 10, items: str },
     recent_developments: {
-      type: "array", maxItems: 12,
+      type: "array", maxItems: 8,
       items: { type: "object", properties: { date: str, headline: str }, required: ["headline"] },
     },
-    not_found: { type: "array", maxItems: 15, items: str },
+    not_found: { type: "array", maxItems: 10, items: str },
   },
   required: ["legal_name", "mandate", "not_found"],
 };
 
-/* The profile as Jadara reads it: Arabic, with the service mapping Exa has no
-   way to produce. */
-const PROFILE_SCHEMA = obj({
-  identity: obj({
-    legal_name: str, name_en: str, aliases: strArray, entity_type: str,
-    parent_entity: str, established: str, headquarters: str, website: str,
-  }),
-  mandate: obj({
-    summary: str, sectors: strArray, regulatory_remit: str, services_provided: strArray,
-  }),
-  strategy: obj({
-    vision_2030_alignment: str, published_strategy: str, programs: strArray,
-    stated_targets: strArray, stated_challenges: strArray,
-  }),
-  leadership: arrayOf(obj({ name: str, title: str, note: str })),
-  scale: obj({ budget: str, staff_size: str, branches: str, beneficiaries: str }),
-  structure: obj({ departments: strArray, subsidiaries: strArray, affiliated_entities: strArray }),
-  procurement: obj({
-    platform: str,
-    observed_tenders: arrayOf(obj({ title: str, reference: str, date: str, note: str })),
-    typical_scope: strArray, known_suppliers: strArray, contracting_notes: str,
-  }),
-  maturity_signals: obj({
-    certifications: strArray, excellence_awards: strArray,
-    digital_initiatives: strArray, notes: str,
-  }),
-  recent_developments: arrayOf(obj({ date: str, headline: str, relevance: str })),
-  consulting_entry_points: arrayOf(obj({ need: str, jadara_service: str, rationale: str })),
-  relationship_notes: str,
-  unverified: strArray,
-  sources: arrayOf(obj({ title: str, url: str, used_for: str })),
+/* What Claude adds on top of Exa's facts — and nothing else.
+
+   An earlier version had Claude re-emit every field Exa had already returned.
+   That paid twice for the same information and compiled into a grammar large
+   enough for the API to reject ("The compiled grammar is too large"). Exa's
+   structured output is kept verbatim as the factual record; Claude only
+   contributes what search can't: the read for Jadara, and the service mapping.
+   Small schema, small output, one cheap call. */
+const ANALYSIS_SCHEMA = obj({
+  summary: str,
+  strategic_read: arrayOf(str, 6),
+  consulting_entry_points: arrayOf(obj({ need: str, jadara_service: str, rationale: str }), 6),
+  unverified: arrayOf(str, 10),
 });
 
-const SHAPING_SYSTEM = `أنت مستشار أول في شركة "جَدارة الأداء" للاستشارات الإدارية (السعودية). وصلتك نتائج بحث ميداني عن جهة يُحتمل أن تكون عميلاً، ومهمتك تحويلها إلى ملف تعريفي عربي يُستخدم في قرارات المشاركة في المناقصات وإعداد العروض الفنية.
+const ANALYSIS_SYSTEM = `أنت مستشار أول في شركة "جَدارة الأداء" للاستشارات الإدارية (السعودية). وصلتك حقائق مستخرجة من بحث عن جهة يُحتمل أن تكون عميلاً.
 
-خدمات جَدارة التي تُربط بها احتياجات الجهة: الحوكمة وإدارة المخاطر والامتثال (GRC)، إدارة الجودة وتدقيق الآيزو، التميز المؤسسي وتقييم النضج (KAQA / EFQM)، استمرارية الأعمال (BCM/DRP وفق ISO 22301)، تطوير المنهجيات والأطر التنظيمية، بناء القدرات والتدريب.
+الحقائق نفسها محفوظة ومعروضة كما هي — لا تُعدها ولا تُعد كتابتها. مهمتك ما لا يستطيع البحث إنتاجه فقط:
+- summary: فقرة عربية موجزة (٣-٥ جمل) تصف الجهة وما يهمّنا فيها.
+- strategic_read: نقاط قصيرة عمّا تعنيه هذه الحقائق لجَدارة تحديداً (حجم الفرصة، نضج الجهة، أسلوب تعاقدها، ما يرجّح أو يضعف موقعنا).
+- consulting_entry_points: اربط احتياجاً ظاهراً في الحقائق بخدمة محددة من خدمات جَدارة، مع مبرر مستند إلى ما ورد فعلاً.
+- unverified: ما لم يثبت — ابدأ بما ورد في "not_found" وأضف أي فجوة جوهرية تلاحظها.
+
+خدمات جَدارة: الحوكمة وإدارة المخاطر والامتثال (GRC)، إدارة الجودة وتدقيق الآيزو، التميز المؤسسي وتقييم النضج (KAQA / EFQM)، استمرارية الأعمال (BCM/DRP وفق ISO 22301)، تطوير المنهجيات والأطر التنظيمية، بناء القدرات والتدريب.
 
 قواعد صارمة:
-- لا تضف معلومة لم ترد في نتائج البحث. لا تخترع اسماً أو رقماً أو ميزانية أو منافسة.
-- ما ورد في "not_found" أو ما لم تجده في النتائج يُدرج في "unverified" بصياغة تبيّن أنه يحتاج تحققاً، ولا يُذكر كحقيقة.
-- في consulting_entry_points اربط احتياجاً ظاهراً من نتائج البحث بخدمة محددة من خدمات جَدارة أعلاه، مع مبرر مستند إلى ما ورد فعلاً. إن لم يظهر احتياج واضح فاترك القائمة قصيرة بدل حشوها.
-- انقل المصادر كما وردت مع روابطها في "sources".
+- لا تضف معلومة لم ترد في الحقائق. لا تخترع اسماً أو رقماً أو ميزانية أو منافسة.
+- إن لم يظهر احتياج واضح، اترك القائمة قصيرة بدل حشوها.
 - اكتب بالعربية الفصحى المناسبة لعرض تنفيذي. لا عناوين Markdown.
 أرجع JSON حسب المخطط فقط.`;
 
@@ -275,22 +261,21 @@ Deno.serve(async (req: Request) => {
       stage: "structuring", progress_note: "ترتيب النتائج في ملف منظّم", progress_at: now(),
     }).eq("id", profileId);
 
-    const findings = {
-      structured: run.output?.structured ?? null,
-      summary: run.output?.text ?? null,
-      citations: run.output?.grounding ?? null,
-    };
+    const facts = run.output?.structured ?? null;
 
+    // Small schema, small ceiling, low effort: this is a shaping task over
+    // facts already established, not reasoning that needs headroom.
     const stream = anthropic.beta.messages.stream({
       model: MODEL,
-      max_tokens: 24000,
+      max_tokens: 4000,
       betas: [FALLBACK_BETA],
       fallbacks: "default",
-      output_config: { effort: "medium", format: { type: "json_schema", schema: PROFILE_SCHEMA } },
-      system: SHAPING_SYSTEM,
+      output_config: { effort: "low", format: { type: "json_schema", schema: ANALYSIS_SCHEMA } },
+      system: ANALYSIS_SYSTEM,
       messages: [{
         role: "user",
-        content: `الجهة: ${row.entity_name}\n\nنتائج البحث:\n${JSON.stringify(findings, null, 2)}`,
+        content: `الجهة: ${row.entity_name}\n\nالحقائق المستخرجة:\n${JSON.stringify(facts)}` +
+          (run.output?.text ? `\n\nملخص البحث:\n${run.output.text}` : ""),
       }],
       // deno-lint-ignore no-explicit-any
     } as any);
@@ -302,12 +287,15 @@ Deno.serve(async (req: Request) => {
     const raw = textOf(shaped.content);
     if (!raw) return await fail("لم يُرجع النموذج محتوى", 502);
 
-    const profile = JSON.parse(raw);
+    // Facts stay exactly as Exa returned them — including in their original
+    // language. Translating a tender title would lose the string you'd search
+    // Etimad for.
+    const profile = { facts, analysis: JSON.parse(raw), search_summary: run.output?.text ?? null };
+
     await admin.from("entity_profiles").update({
       status: "done",
       stage: "complete",
       profile,
-      sources: profile.sources || [],
       grounding: run.output?.grounding ?? null,
       exa_cost: run.costDollars?.total ?? null,
       progress_note: null,

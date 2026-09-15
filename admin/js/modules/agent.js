@@ -213,7 +213,14 @@ async function openProfile(id) {
           فشل البحث: ${esc(row.error || 'سبب غير معروف')}
           <div style="margin-top:14px"><button type="button" class="btn-save" id="profResumeBtn">إعادة المحاولة</button></div>
         </div>` : ''}
-      ${row.status === 'done' ? renderProfile({ ...row.profile, entity_name: row.entity_name }) : ''}
+      ${row.status === 'done' ? renderProfile({
+        ...row.profile,
+        entity_name: row.entity_name,
+        // Exa's grounding shape isn't guaranteed to be a flat array, so only
+        // pass it through when it is; the renderer shouldn't have to guess.
+        sources: Array.isArray(row.grounding) ? row.grounding
+          : Array.isArray(row.grounding?.citations) ? row.grounding.citations : []
+      }) : ''}
       ${row.status === 'done' && row.search_count
         ? `<p class="content-hint">اعتمد الملف على ${row.search_count} عملية بحث.</p>` : ''}
     `;
