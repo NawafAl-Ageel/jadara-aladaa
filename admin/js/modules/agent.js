@@ -6,7 +6,7 @@ import {
 import { renderAssessment } from './agent/gonogo-render.js';
 import { renderProfile } from './agent/profile-render.js';
 import {
-  startProfile, getProfile, listProfiles, pollProfile, STATUS_LABELS
+  startProfile, getProfile, listProfiles, pollProfile, resumeProfile, STATUS_LABELS
 } from './agent/profiler.js';
 import { daysUntil } from './agent/hijri.js';
 
@@ -205,10 +205,15 @@ async function openProfile(id) {
             <span id="profElapsed">—</span>
             ${row.progress_note ? `<span>${esc(row.progress_note)}</span>` : ''}
             ${row.search_count ? `<span>${row.search_count} عملية بحث</span>` : ''}
+            ${row.stage === 'structuring' ? '<span>المرحلة الأخيرة</span>' : ''}
           </div>
         </div>` : ''}
       ${row.status === 'failed' ? `
-        <div class="empty-state">فشل البحث: ${esc(row.error || 'سبب غير معروف')}</div>` : ''}
+        <div class="empty-state">
+          فشل البحث: ${esc(row.error || 'سبب غير معروف')}
+          ${row.round ? `<div class="content-hint">توقّف بعد ${row.round} جولة و${row.search_count || 0} عملية بحث.</div>` : ''}
+          <div style="margin-top:14px"><button type="button" class="btn-save" id="profResumeBtn">استئناف البحث</button></div>
+        </div>` : ''}
       ${row.status === 'done' ? renderProfile({ ...row.profile, entity_name: row.entity_name }) : ''}
       ${row.status === 'done' && row.search_count
         ? `<p class="content-hint">اعتمد الملف على ${row.search_count} عملية بحث.</p>` : ''}
@@ -219,6 +224,21 @@ async function openProfile(id) {
       renderHome();
     });
     $('#profPrintBtn')?.addEventListener('click', () => window.print());
+    $('#profResumeBtn')?.addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      btn.disabled = true;
+      btn.textContent = 'جارٍ الاستئناف...';
+      // Resuming continues from the stored conversation — earlier rounds and
+      // their searches are kept, not repeated.
+      try {
+        await resumeProfile(id);
+        await openProfile(id);
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = 'استئناف البحث';
+        alert('تعذر الاستئناف: ' + (err?.message || String(err)));
+      }
+    });
 
     // The poll is every few seconds; the clock ticks every second so the run
     // reads as alive between updates rather than frozen.
