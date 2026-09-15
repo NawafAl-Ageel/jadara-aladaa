@@ -71,7 +71,7 @@ async function renderProfileList() {
     el.innerHTML = `
       <div class="toolbar"><div class="toolbar__start"><h2 class="toolbar__title">ملفات الجهات</h2></div></div>
       <table class="table">
-        <thead><tr><th>الجهة</th><th>الحالة</th><th>عمليات البحث</th><th>التاريخ</th><th></th></tr></thead>
+        <thead><tr><th>الجهة</th><th>الحالة</th><th>التكلفة</th><th>التاريخ</th><th></th></tr></thead>
         <tbody>
           ${rows.map(r => `
             <tr>
@@ -79,7 +79,7 @@ async function renderProfileList() {
               <td><span class="gng-match gng-match--${statusClass(r.status)}">${
                 esc(STATUS_LABELS[r.status] || r.status)}</span>${
                 r.error ? `<div class="prof-error">${esc(r.error)}</div>` : ''}</td>
-              <td>${r.search_count ?? '—'}</td>
+              <td>${r.exa_cost ? '$' + Number(r.exa_cost).toFixed(2) : '—'}</td>
               <td>${formatDate(r.created_at)}</td>
               <td>${r.status === 'done'
                 ? `<button type="button" class="btn-back" data-open-profile="${r.id}">عرض</button>`
@@ -204,15 +204,14 @@ async function openProfile(id) {
           <div class="prof-stats">
             <span id="profElapsed">—</span>
             ${row.progress_note ? `<span>${esc(row.progress_note)}</span>` : ''}
-            ${row.search_count ? `<span>${row.search_count} عملية بحث</span>` : ''}
+            ${row.exa_status ? `<span>Exa: ${esc(row.exa_status)}</span>` : ''}
             ${row.stage === 'structuring' ? '<span>المرحلة الأخيرة</span>' : ''}
           </div>
         </div>` : ''}
       ${row.status === 'failed' ? `
         <div class="empty-state">
           فشل البحث: ${esc(row.error || 'سبب غير معروف')}
-          ${row.round ? `<div class="content-hint">توقّف بعد ${row.round} جولة و${row.search_count || 0} عملية بحث.</div>` : ''}
-          <div style="margin-top:14px"><button type="button" class="btn-save" id="profResumeBtn">استئناف البحث</button></div>
+          <div style="margin-top:14px"><button type="button" class="btn-save" id="profResumeBtn">إعادة المحاولة</button></div>
         </div>` : ''}
       ${row.status === 'done' ? renderProfile({ ...row.profile, entity_name: row.entity_name }) : ''}
       ${row.status === 'done' && row.search_count
@@ -227,7 +226,7 @@ async function openProfile(id) {
     $('#profResumeBtn')?.addEventListener('click', async (e) => {
       const btn = e.currentTarget;
       btn.disabled = true;
-      btn.textContent = 'جارٍ الاستئناف...';
+      btn.textContent = "جارٍ إعادة المحاولة...";
       // Resuming continues from the stored conversation — earlier rounds and
       // their searches are kept, not repeated.
       try {
@@ -235,8 +234,8 @@ async function openProfile(id) {
         await openProfile(id);
       } catch (err) {
         btn.disabled = false;
-        btn.textContent = 'استئناف البحث';
-        alert('تعذر الاستئناف: ' + (err?.message || String(err)));
+        btn.textContent = "إعادة المحاولة";
+        alert("تعذر إعادة المحاولة: " + (err?.message || String(err)));
       }
     });
 

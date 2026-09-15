@@ -55,7 +55,7 @@ export async function listProfiles() {
   const sb = getSupabase();
   const { data, error } = await sb
     .from('entity_profiles')
-    .select('id, entity_name, status, stage, round, search_count, progress_note, created_at, completed_at, error')
+    .select('id, entity_name, status, stage, exa_status, exa_cost, progress_note, created_at, completed_at, error')
     .is('deleted_at', null)
     .order('created_at', { ascending: false })
     .limit(100);
@@ -79,55 +79,51 @@ export async function findProfileForEntity(entityName) {
   return data?.[0] || null;
 }
 
-/* Polls until the job settles.
+/* Each tick calls the function, which checks the Exa run and ingests the
+   result once it's finished. That's why this polls the function rather than
+   just reading the row: the row only advances when something asks Exa.
 
-   There's no wall-clock deadline: a thorough run legitimately takes a long
-   time, and the previous version declared failure at fifteen minutes on a job
-   that was still fine. What actually signals trouble is progress that stops
-   advancing — each round writes progress_at, so a run that hasn't moved in
-   STALL_MS has stalled, whatever the elapsed total. */
-const STALL_MS = 240000;
-
-export function pollProfile(id, onUpdate, { intervalMs = 4000 } = {}) {
+   No wall-clock deadline — Exa decides how long the research takes, and the
+   previous version declared failure at fifteen minutes on a run that was
+   fine. Since Exa holds the run, a closed tab doesn't lose anything: the
+   research continues, and the next tick from anyone ingests it. */
+export function pollProfile(id, onUpdate, { intervalMs = 5000 } = {}) {
+  const sb = getSupabase();
   let stopped = false;
   let timer = null;
-  let lastProgress = null;
-  let lastMovedAt = Date.now();
 
   const tick = async () => {
     if (stopped) return;
     try {
+      // Errors returned in the body are handled through the row below, which
+      // carries the message the function recorded.
+      await sb.functions.invoke('profile-entity', { body: { profileId: id } });
+    } catch {
+      // A dropped check just means waiting for the next tick.
+    }
+    if (stopped) return;
+
+    try {
       const row = await getProfile(id);
       onUpdate(row);
       if (row.status === 'done' || row.status === 'failed') return;
-
-      const marker = `${row.round}|${row.search_count}|${row.progress_at}`;
-      if (marker !== lastProgress) { lastProgress = marker; lastMovedAt = Date.now(); }
-
-      if (Date.now() - lastMovedAt > STALL_MS) {
-        onUpdate({
-          ...row,
-          status: 'failed',
-          error: 'توقّف البحث عن التقدّم — يبدو أن إحدى الجولات لم تكتمل. أعد المحاولة.'
-        });
-        return;
-      }
     } catch {
       // A transient read failure shouldn't kill the poll.
     }
     timer = setTimeout(tick, intervalMs);
   };
 
-  timer = setTimeout(tick, 2000);
+  timer = setTimeout(tick, 1500);
   return () => { stopped = true; if (timer) clearTimeout(timer); };
 }
 
-/* Nudges a run that stopped between rounds. Each round chains the next itself,
-   so this is only needed when a chain request was dropped. */
+/* Retries a failed run. The Exa run id is cleared so a fresh one starts —
+   a run that failed on Exa's side won't produce anything on re-check. */
 export async function resumeProfile(id) {
   const sb = getSupabase();
   await sb.from('entity_profiles')
-    .update({ status: 'researching', error: null }).eq('id', id);
+    .update({ status: 'queued', error: null, exa_run_id: null, exa_status: null })
+    .eq('id', id);
   const { data, error } = await sb.functions.invoke('profile-entity', { body: { profileId: id } });
   if (error) throw error;
   if (data?.error) throw new Error(data.error);

@@ -21,3 +21,6 @@ supabase/.branches/
 *.db
 *.db-shm
 *.db-wal
+
+# Agent skills installed via `npx skills add` — tooling, not app code
+.agents/
