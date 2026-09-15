@@ -6,7 +6,8 @@ import {
 import { renderAssessment } from './agent/gonogo-render.js';
 import { renderProfile } from './agent/profile-render.js';
 import {
-  startProfile, getProfile, listProfiles, pollProfile, resumeProfile, STATUS_LABELS
+  startProfile, getProfile, listProfiles, pollProfile, resumeProfile, cancelProfile,
+  STATUS_LABELS
 } from './agent/profiler.js';
 import { daysUntil } from './agent/hijri.js';
 
@@ -83,8 +84,9 @@ async function renderProfileList() {
               <td>${formatDate(r.created_at)}</td>
               <td>${r.status === 'done'
                 ? `<button type="button" class="btn-back" data-open-profile="${r.id}">عرض</button>`
-                : r.status === 'researching'
-                  ? `<button type="button" class="btn-back" data-open-profile="${r.id}">متابعة</button>`
+                : r.status === 'researching' || r.status === 'queued'
+                  ? `<button type="button" class="btn-back" data-open-profile="${r.id}">متابعة</button>
+                     <button type="button" class="btn-back" data-stop-profile="${r.id}">إيقاف</button>`
                   : ''}</td>
             </tr>`).join('')}
         </tbody>
@@ -92,6 +94,14 @@ async function renderProfileList() {
     `;
     el.querySelectorAll('[data-open-profile]').forEach(btn => {
       btn.addEventListener('click', () => openProfile(Number(btn.dataset.openProfile)));
+    });
+    // Stopping from the list, so a run can be called off without opening it.
+    el.querySelectorAll('[data-stop-profile]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        const ok = await confirmStop(Number(btn.dataset.stopProfile), renderProfileList);
+        if (!ok) btn.disabled = false;
+      });
     });
   } catch (err) {
     el.innerHTML = `<div class="empty-state">تعذر تحميل الملفات: ${esc(err?.message || String(err))}</div>`;
@@ -101,6 +111,26 @@ async function renderProfileList() {
 function statusClass(status) {
   return status === 'done' ? 'met' : status === 'failed' ? 'gap'
     : status === 'researching' ? 'partial' : 'unknown';
+}
+
+/* Asks before stopping, because the run cannot be resumed from where it got
+   to — restarting means paying for the research again from zero. */
+async function confirmStop(id, onDone) {
+  if (!confirm('إيقاف البحث الآن؟ لن يُحفظ ما جُمِع حتى الآن، وتُحتسب تكلفة ما أُنجز قبل الإيقاف.')) return false;
+  try {
+    const res = await cancelProfile(id);
+    // The research finished between the click and the call: nothing was
+    // stopped, and the result is already paid for.
+    if (res?.raced) {
+      alert('انتهى البحث قبل وصول أمر الإيقاف — سيُعرض الملف بعد قليل.');
+      return false;
+    }
+    if (onDone) await onDone();
+    return true;
+  } catch (err) {
+    alert('تعذر الإيقاف: ' + (err?.message || String(err)));
+    return false;
+  }
 }
 
 function openProfileIntake() {
@@ -207,6 +237,15 @@ async function openProfile(id) {
             ${row.exa_status ? `<span>Exa: ${esc(row.exa_status)}</span>` : ''}
             ${row.stage === 'structuring' ? '<span>المرحلة الأخيرة</span>' : ''}
           </div>
+          <div style="margin-top:14px">
+            <button type="button" class="btn-back" id="profStopBtn">إيقاف البحث</button>
+          </div>
+        </div>` : ''}
+      ${row.status === 'cancelled' ? `
+        <div class="empty-state">
+          أُوقف البحث قبل اكتماله، ولم يُحفظ ما جُمِع.
+          ${row.exa_cost ? `<div class="content-hint">تكلفة ما أُنجز قبل الإيقاف: $${Number(row.exa_cost).toFixed(2)}</div>` : ''}
+          <div style="margin-top:14px"><button type="button" class="btn-save" id="profResumeBtn">بدء بحث جديد</button></div>
         </div>` : ''}
       ${row.status === 'failed' ? `
         <div class="empty-state">
@@ -230,18 +269,32 @@ async function openProfile(id) {
       renderHome();
     });
     $('#profPrintBtn')?.addEventListener('click', () => window.print());
-    $('#profResumeBtn')?.addEventListener('click', async (e) => {
+    $('#profStopBtn')?.addEventListener('click', async (e) => {
       const btn = e.currentTarget;
       btn.disabled = true;
-      btn.textContent = "جارٍ إعادة المحاولة...";
-      // Resuming continues from the stored conversation — earlier rounds and
-      // their searches are kept, not repeated.
+      btn.textContent = 'جارٍ الإيقاف...';
+      // The poll keeps running until the stop is confirmed: if it turns out
+      // the research already finished, the next tick ingests it.
+      const stopped = await confirmStop(id, async () => {
+        if (stopPolling) { stopPolling(); stopPolling = null; }
+        stopClock();
+        await openProfile(id);
+      });
+      if (!stopped) { btn.disabled = false; btn.textContent = 'إيقاف البحث'; }
+    });
+    $('#profResumeBtn')?.addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      const label = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = "جارٍ البدء...";
+      // A fresh Exa run either way: neither a failed nor a stopped run leaves
+      // anything behind to continue from.
       try {
         await resumeProfile(id);
         await openProfile(id);
       } catch (err) {
         btn.disabled = false;
-        btn.textContent = "إعادة المحاولة";
+        btn.textContent = label;
         alert("تعذر إعادة المحاولة: " + (err?.message || String(err)));
       }
     });

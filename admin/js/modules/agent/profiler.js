@@ -12,7 +12,8 @@ export const STATUS_LABELS = {
   queued: 'في الانتظار',
   researching: 'جارٍ البحث',
   done: 'مكتمل',
-  failed: 'فشل'
+  failed: 'فشل',
+  cancelled: 'موقوف'
 };
 
 export async function startProfile({ entityName, aliases, context }) {
@@ -106,7 +107,8 @@ export function pollProfile(id, onUpdate, { intervalMs = 5000 } = {}) {
     try {
       const row = await getProfile(id);
       onUpdate(row);
-      if (row.status === 'done' || row.status === 'failed') return;
+      if (row.status === 'done' || row.status === 'failed' ||
+          row.status === 'cancelled') return;
     } catch {
       // A transient read failure shouldn't kill the poll.
     }
@@ -117,8 +119,33 @@ export function pollProfile(id, onUpdate, { intervalMs = 5000 } = {}) {
   return () => { stopped = true; if (timer) clearTimeout(timer); };
 }
 
-/* Retries a failed run. The Exa run id is cleared so a fresh one starts —
-   a run that failed on Exa's side won't produce anything on re-check. */
+/* Stops a run that is still going.
+
+   Exa's graceful /stop — which keeps whatever was found — is only offered on
+   "max" effort runs, and ours are "medium", so this discards the research.
+   Usage accrued before the stop is still billed, which is the whole reason to
+   stop early: it caps the bill rather than avoiding it.
+
+   Returns `raced: true` when the research happened to finish first. In that
+   case nothing was stopped and the caller should keep polling — the result is
+   already paid for, and discarding it would be the one outcome with no upside.
+
+   A run started but never given an Exa id is just marked stopped; there is
+   nothing on Exa's side to call. */
+export async function cancelProfile(id) {
+  const sb = getSupabase();
+  const { data, error } = await sb.functions.invoke('profile-entity', {
+    body: { profileId: id, action: 'cancel' }
+  });
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+  if (!data?.raced) await logAudit('update', 'entity_profile', id, null, { action: 'cancel' });
+  return data;
+}
+
+/* Restarts a run that failed or was stopped. The Exa run id is cleared so a
+   fresh one starts — neither a failed nor a cancelled run will produce
+   anything on re-check, so there is nothing to resume from. */
 export async function resumeProfile(id) {
   const sb = getSupabase();
   await sb.from('entity_profiles')

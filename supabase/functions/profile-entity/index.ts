@@ -204,6 +204,7 @@ Deno.serve(async (req: Request) => {
   try {
     const body = await req.json();
     profileId = body?.profileId ?? null;
+    const action = body?.action ?? "run";
     if (!profileId) return json({ error: "profileId مطلوب" }, 400);
 
     // Caught here rather than deep in a client library, where a missing secret
@@ -219,6 +220,56 @@ Deno.serve(async (req: Request) => {
       .from("entity_profiles").select("*").eq("id", profileId).single();
     if (error || !row) return json({ error: "لم يتم العثور على الطلب" }, 404);
     if (row.status === "done") return json({ status: "done", id: row.id });
+
+    /* ---- stop a run ---- */
+    //
+    // Exa has two ways out: /stop wraps up gracefully and keeps what was found,
+    // /cancel drops the run and returns nothing. /stop is only available on
+    // "max" effort runs and ours are "medium", so cancel is what we have. The
+    // UI says so plainly rather than implying partial results are coming.
+    //
+    // Cancel is idempotent: on a run that already reached a terminal status Exa
+    // returns it unchanged. That matters for the race below.
+    if (action === "cancel") {
+      if (!row.exa_run_id) {
+        await admin.from("entity_profiles").update({
+          status: "cancelled", progress_note: null, completed_at: now(),
+        }).eq("id", profileId);
+        return json({ status: "cancelled", id: profileId });
+      }
+
+      // Caught here so the catch-all below doesn't mark the profile "failed":
+      // a cancel that didn't go through means the run is still going at Exa,
+      // and a row that reads as finished would hide that it's still billing.
+      let stopped;
+      try {
+        stopped = await exa(`/agent/runs/${row.exa_run_id}/cancel`, { method: "POST" });
+      } catch (err) {
+        return json({ error: `تعذر إيقاف البحث — لا يزال قائماً: ${String(err)}` }, 502);
+      }
+
+      // The research may have finished in the seconds between the click and
+      // this call. It's paid for either way, so throwing it away would be
+      // pure waste — leave the run alone and let the next check ingest it.
+      if (stopped?.status === "completed") {
+        await admin.from("entity_profiles")
+          .update({ exa_status: stopped.status, progress_at: now() }).eq("id", profileId);
+        return json({ status: "researching", raced: true, id: profileId });
+      }
+
+      await admin.from("entity_profiles").update({
+        status: "cancelled",
+        exa_status: stopped?.status ?? "cancelled",
+        stage: null,
+        progress_note: null,
+        exa_cost: stopped?.costDollars?.total ?? row.exa_cost,
+        completed_at: now(),
+      }).eq("id", profileId);
+      return json({ status: "cancelled", id: profileId });
+    }
+
+    // A stopped run stays stopped until someone restarts it explicitly.
+    if (row.status === "cancelled") return json({ status: "cancelled", id: row.id });
 
     /* ---- start a run ---- */
     if (!row.exa_run_id) {
